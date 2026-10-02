@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+val envFile = rootProject.file(".env")
+val envProperties = Properties()
+if (envFile.exists()) {
+    envFile.inputStream().use { envProperties.load(it) }
+}
+
+val supabaseUrl = envProperties.getProperty("SUPABASE_URL")
+    ?: "https://grlxcuutqwunnruipbzg.supabase.co"
+val supabaseAnonKey = envProperties.getProperty("SUPABASE_ANON_KEY")
+    ?: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdybHhjdXV0cXd1bm5ydWlwYnpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNjIzNTcsImV4cCI6MjEwMzczODM1N30.e43rmKwPy1cgXYimIxGfglplSCpSZdQlXZqXL4OhMSI"
 
 android {
     namespace = "com.example.farmproject"
@@ -18,6 +31,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -33,6 +49,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -63,7 +80,6 @@ dependencies {
     implementation(libs.storage.kt)
     implementation(libs.auth.kt)
     implementation(libs.functions.kt)
-
 
     implementation(libs.ktor.client.android)
     testImplementation(libs.junit)

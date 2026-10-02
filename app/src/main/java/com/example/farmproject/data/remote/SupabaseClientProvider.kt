@@ -1,5 +1,6 @@
 package com.example.farmproject.data.remote
 
+import com.example.farmproject.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
@@ -9,8 +10,8 @@ import io.github.jan.supabase.storage.Storage
 
 object SupabaseClientProvider {
 
-    private const val SUPABASE_URL = "https://grlxcuutqwunnruipbzg.supabase.co"
-    private const val SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdybHhjdXV0cXd1bm5ydWlwYnpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNjIzNTcsImV4cCI6MjEwMzczODM1N30.e43rmKwPy1cgXYimIxGfglplSCpSZdQlXZqXL4OhMSI"
+    private val SUPABASE_URL: String = BuildConfig.SUPABASE_URL
+    private val SUPABASE_ANON_KEY: String = BuildConfig.SUPABASE_ANON_KEY
 
     val client: SupabaseClient = createSupabaseClient(
         supabaseUrl = SUPABASE_URL,
@@ -24,7 +25,6 @@ object SupabaseClientProvider {
         }
         install(Storage)
         install(Functions)
-
     }
 
     /**
