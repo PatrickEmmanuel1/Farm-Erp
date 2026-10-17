@@ -75,6 +75,19 @@ class DivisionsViewModel(
         }
     }
 
+    fun assignCropsToDivision(cropIds: List<String>, divisionId: String) {
+        viewModelScope.launch {
+            try {
+                cropIds.forEach { cropId ->
+                    cropRepository.assignCropToDivision(cropId = cropId, divisionId = divisionId)
+                }
+                loadDivisions()
+            } catch (e: Exception) {
+                _uiState.value = DivisionsUiState.Error(e.message ?: "Failed to assign crop to division")
+            }
+        }
+    }
+
     fun addDivision(
         name: String,
         sizeText: String,

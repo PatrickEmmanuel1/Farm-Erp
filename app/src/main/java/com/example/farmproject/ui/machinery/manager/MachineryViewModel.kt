@@ -124,6 +124,31 @@ class MachineryViewModel(
         }
     }
 
+    fun updateMachineryDetails(
+        machineryId: String,
+        name: String,
+        purchaseDate: String?,
+        purchaseCost: Double?
+    ) {
+        viewModelScope.launch {
+            try {
+                val existing = repository.getMachineryById(machineryId)
+                if (existing != null) {
+                    val updated = existing.copy(
+                        name = name,
+                        purchaseDate = purchaseDate,
+                        purchaseCost = purchaseCost
+                    )
+                    repository.updateMachinery(updated)
+                    loadMachineryDetail(machineryId)
+                    loadMachinery()
+                }
+            } catch (e: Exception) {
+                _saveState.value = MachinerySaveState.Error(e.message ?: "Failed to update machinery")
+            }
+        }
+    }
+
     fun recordUsage(
         machineryId: String,
         hoursUsed: Double,

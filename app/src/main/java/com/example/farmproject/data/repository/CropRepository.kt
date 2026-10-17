@@ -1,6 +1,7 @@
 package com.example.farmproject.data.repository
 
 import com.example.farmproject.data.model.Crop
+import com.example.farmproject.data.model.CropHarvest
 import com.example.farmproject.data.model.CropPlanting
 import com.example.farmproject.data.model.CropPlantingDisplay
 import com.example.farmproject.data.model.Division
@@ -9,8 +10,11 @@ import com.example.farmproject.data.session.CurrentSession
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.time.LocalDate
 import java.util.UUID
 
@@ -134,27 +138,42 @@ class CropRepository(
         }
 
         val newCropId = UUID.randomUUID().toString()
+        val sName = scientificName?.trim()?.ifBlank { null }
+        val desc = description?.trim()?.ifBlank { null }
+
         val newCrop = Crop(
             cropId = newCropId,
             name = trimmedName,
-            scientificName = scientificName?.trim()?.ifBlank { null },
-            description = description?.trim()?.ifBlank { null }
+            scientificName = sName,
+            description = desc ?: ""
         )
 
+        val payload1 = buildJsonObject {
+            put("crop_id", newCropId)
+            put("name", trimmedName)
+            if (!sName.isNullOrBlank()) put("scientific_name", sName)
+            put("description", desc ?: "")
+        }
+
+        val payload2 = buildJsonObject {
+            put("crop_id", newCropId)
+            put("name", trimmedName)
+            if (!sName.isNullOrBlank()) put("scientific_name", sName)
+        }
+
         return try {
-            val inserted = client.from("crop")
-                .insert(newCrop) {
-                    select()
-                }
-                .decodeSingle<Crop>()
-            Result.success(inserted)
-        } catch (_: Exception) {
             try {
-                client.from("crop").insert(newCrop)
-                Result.success(newCrop)
-            } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Failed to create crop."))
+                client.from("crop").insert(payload1)
+            } catch (_: Exception) {
+                try {
+                    client.from("crop").insert(payload2)
+                } catch (_: Exception) {
+                    client.from("crop").insert(newCrop)
+                }
             }
+            Result.success(newCrop)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Failed to create crop."))
         }
     }
 
@@ -205,6 +224,17 @@ class CropRepository(
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    suspend fun deleteCrop(cropId: String) {
+        try {
+            client.from("crop")
+                .update(mapOf("is_deleted" to true)) {
+                    filter {
+                        eq("crop_id", cropId)
+                    }
+                }
+        } catch (_: Exception) {}
     }
 
     suspend fun getCropPlantingsForFarm(farmId: String): List<CropPlantingDisplay> {
@@ -347,4 +377,93 @@ class CropRepository(
                 }
         } catch (_: Exception) {}
     }
+
+    suspend fun getCropHarvestsForFarm(farmId: String): List<CropHarvestDisplay> {
+        val validFarmId = if (farmId.isNotBlank()) farmId else CurrentSession.ensureFarmId(client)
+
+        val rawHarvests = try {
+            client.from("crop_harvest")
+                .select {
+                    filter {
+                        if (validFarmId.isNotBlank()) eq("farm_id", validFarmId)
+                    }
+                    order("harvest_date", Order.DESCENDING)
+                }
+                .decodeList<CropHarvest>()
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        if (rawHarvests.isEmpty()) return emptyList()
+
+        val plantings = getCropPlantingsForFarm(validFarmId)
+        val plantingMap = plantings.associateBy { it.planting.plantingId }
+
+        return rawHarvests.map { h ->
+            val pDisplay = plantingMap[h.plantingId]
+            CropHarvestDisplay(
+                harvest = h,
+                cropName = pDisplay?.cropName ?: "Harvested Crop",
+                divisionName = pDisplay?.divisionName ?: "Division"
+            )
+        }
+    }
+
+    suspend fun recordCropHarvest(
+        plantingId: String,
+        divisionId: String,
+        harvestDate: String,
+        quantityHarvested: Double,
+        quantityUnit: String,
+        qualityGrade: String?,
+        notes: String?
+    ): Result<CropHarvest> {
+        val farmId = CurrentSession.ensureFarmId(client)
+        val hId = UUID.randomUUID().toString()
+
+        val harvest = CropHarvest(
+            harvestId = hId,
+            plantingId = plantingId,
+            farmId = farmId,
+            divisionId = divisionId,
+            harvestDate = harvestDate.ifBlank { "2026-03-30" },
+            quantityHarvested = quantityHarvested,
+            quantityUnit = quantityUnit,
+            qualityGrade = qualityGrade?.ifBlank { null },
+            quantity = quantityHarvested,
+            unit = quantityUnit,
+            notes = notes?.ifBlank { null }
+        )
+
+        val payload = buildJsonObject {
+            put("harvest_id", hId)
+            put("planting_id", plantingId)
+            put("farm_id", farmId)
+            put("division_id", divisionId)
+            put("harvest_date", harvestDate.ifBlank { "2026-03-30" })
+            put("quantity_harvested", quantityHarvested)
+            put("quantity_unit", quantityUnit)
+            if (!qualityGrade.isNullOrBlank()) put("quality_grade", qualityGrade)
+            put("quantity", quantityHarvested)
+            put("unit", quantityUnit)
+            if (!notes.isNullOrBlank()) put("notes", notes)
+        }
+
+        return try {
+            try {
+                client.from("crop_harvest").insert(payload)
+            } catch (_: Exception) {
+                client.from("crop_harvest").insert(harvest)
+            }
+            Result.success(harvest)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Failed to record crop harvest."))
+        }
+    }
 }
+
+data class CropHarvestDisplay(
+    val harvest: CropHarvest,
+    val cropName: String,
+    val divisionName: String
+)

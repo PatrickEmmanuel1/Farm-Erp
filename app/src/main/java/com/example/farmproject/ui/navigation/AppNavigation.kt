@@ -13,12 +13,10 @@ import com.example.farmproject.data.repository.AuthRepository
 import com.example.farmproject.data.session.CurrentSession
 import com.example.farmproject.ui.auth.manager.ManagerLoginScreen
 import com.example.farmproject.ui.auth.manager.ManagerSignUpScreen
-import com.example.farmproject.ui.auth.supervisor.SupervisorLoginScreen
-import com.example.farmproject.ui.auth.worker.WorkerLoginScreen
-import com.example.farmproject.ui.dashboard.supervisor.SupervisorDashboardScreen
-import com.example.farmproject.ui.dashboard.worker.WorkerDashboardScreen
 import com.example.farmproject.ui.farm.CreateFarmScreen
 import com.example.farmproject.ui.navigation.manager.ManagerNavigation
+import com.example.farmproject.ui.navigation.supervisor.SupervisorNavigation
+import com.example.farmproject.ui.navigation.worker.WorkerNavigation
 import com.example.farmproject.ui.role.RoleSelectionScreen
 import com.example.farmproject.ui.splash.SplashScreen
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -30,20 +28,16 @@ fun AppNavigation() {
     val authRepository = remember { AuthRepository() }
     val sessionStatus by authRepository.sessionStatus.collectAsState()
 
-    // Requirement 3: Reacting when session ends (logout or session revoked)
     LaunchedEffect(sessionStatus) {
         if (sessionStatus is SessionStatus.NotAuthenticated) {
             CurrentSession.clear()
             val currentRoute = navController.currentDestination?.route
             if (currentRoute != null &&
                 currentRoute != AppRoute.Splash.route &&
-                currentRoute != AppRoute.RoleSelection.route &&
                 currentRoute != AppRoute.ManagerLogin.route &&
-                currentRoute != AppRoute.ManagerSignUp.route &&
-                currentRoute != AppRoute.SupervisorLogin.route &&
-                currentRoute != AppRoute.WorkerLogin.route
+                currentRoute != AppRoute.ManagerSignUp.route
             ) {
-                navController.navigate(AppRoute.RoleSelection.route) {
+                navController.navigate(AppRoute.ManagerLogin.route) {
                     popUpTo(0) { inclusive = true }
                 }
             }
@@ -54,17 +48,13 @@ fun AppNavigation() {
         navController = navController,
         startDestination = AppRoute.Splash.route
     ) {
-
-        // --------------------------------
-        // Requirement 2: Splash Screen Routing
-        // --------------------------------
+        // Splash Screen
         composable(AppRoute.Splash.route) {
             val coroutineScope = rememberCoroutineScope()
 
             SplashScreen(
                 onSplashFinished = {
                     coroutineScope.launch {
-                        // Requirement 1: Restores session profile details + farmId
                         val isSessionActive = authRepository.restoreSession()
 
                         val targetRoute = if (isSessionActive) {
@@ -74,7 +64,7 @@ fun AppNavigation() {
                                 else -> if (CurrentSession.farmId.isNotBlank()) AppRoute.ManagerDashboard.route else AppRoute.CreateFarm.route
                             }
                         } else {
-                            AppRoute.RoleSelection.route
+                            AppRoute.ManagerLogin.route
                         }
 
                         navController.navigate(targetRoute) {
@@ -87,30 +77,24 @@ fun AppNavigation() {
             )
         }
 
-        // --------------------------------
-        // Role Selection
-        // --------------------------------
+        // Legacy Role Selection (redirects directly to Unified Login Screen)
         composable(AppRoute.RoleSelection.route) {
             RoleSelectionScreen(
-                onManagerSelected = {
-                    navController.navigate(AppRoute.ManagerLogin.route)
-                },
-                onSupervisorSelected = {
-                    navController.navigate(AppRoute.SupervisorLogin.route)
-                },
-                onWorkerSelected = {
-                    navController.navigate(AppRoute.WorkerLogin.route)
-                }
+                onManagerSelected = { navController.navigate(AppRoute.ManagerLogin.route) },
+                onSupervisorSelected = { navController.navigate(AppRoute.ManagerLogin.route) },
+                onWorkerSelected = { navController.navigate(AppRoute.ManagerLogin.route) }
             )
         }
 
-        // --------------------------------
-        // Manager Login
-        // --------------------------------
+        // Unified Login Screen
         composable(AppRoute.ManagerLogin.route) {
             ManagerLoginScreen(
                 onLoginSuccess = {
-                    val targetRoute = if (CurrentSession.farmId.isNotBlank()) AppRoute.ManagerDashboard.route else AppRoute.CreateFarm.route
+                    val targetRoute = when (CurrentSession.userRole?.lowercase()) {
+                        "supervisor" -> AppRoute.SupervisorDashboard.route
+                        "worker" -> AppRoute.WorkerDashboard.route
+                        else -> if (CurrentSession.farmId.isNotBlank()) AppRoute.ManagerDashboard.route else AppRoute.CreateFarm.route
+                    }
                     navController.navigate(targetRoute) {
                         popUpTo(AppRoute.ManagerLogin.route) {
                             inclusive = true
@@ -119,22 +103,43 @@ fun AppNavigation() {
                 },
                 onSignUpClick = {
                     navController.navigate(AppRoute.ManagerSignUp.route)
-                },
-                onBack = {
-                    navController.popBackStack()
                 }
             )
         }
 
-        // --------------------------------
+        composable(AppRoute.SupervisorLogin.route) {
+            ManagerLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(AppRoute.SupervisorDashboard.route) {
+                        popUpTo(AppRoute.SupervisorLogin.route) { inclusive = true }
+                    }
+                },
+                onSignUpClick = {
+                    navController.navigate(AppRoute.ManagerSignUp.route)
+                }
+            )
+        }
+
+        composable(AppRoute.WorkerLogin.route) {
+            ManagerLoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(AppRoute.WorkerDashboard.route) {
+                        popUpTo(AppRoute.WorkerLogin.route) { inclusive = true }
+                    }
+                },
+                onSignUpClick = {
+                    navController.navigate(AppRoute.ManagerSignUp.route)
+                }
+            )
+        }
+
         // Manager Sign Up
-        // --------------------------------
         composable(AppRoute.ManagerSignUp.route) {
             ManagerSignUpScreen(
                 onSignUpSuccess = {
                     val targetRoute = if (CurrentSession.farmId.isNotBlank()) AppRoute.ManagerDashboard.route else AppRoute.CreateFarm.route
                     navController.navigate(targetRoute) {
-                        popUpTo(AppRoute.RoleSelection.route) {
+                        popUpTo(AppRoute.ManagerLogin.route) {
                             inclusive = true
                         }
                     }
@@ -148,9 +153,7 @@ fun AppNavigation() {
             )
         }
 
-        // --------------------------------
         // Create Farm
-        // --------------------------------
         composable(AppRoute.CreateFarm.route) {
             CreateFarmScreen(
                 onFarmCreated = {
@@ -163,9 +166,7 @@ fun AppNavigation() {
             )
         }
 
-        // --------------------------------
         // Manager Navigation
-        // --------------------------------
         composable(AppRoute.ManagerDashboard.route) {
             val coroutineScope = rememberCoroutineScope()
 
@@ -178,41 +179,12 @@ fun AppNavigation() {
             )
         }
 
-        // --------------------------------
-        // Supervisor Login
-        // --------------------------------
-        composable(AppRoute.SupervisorLogin.route) {
-            SupervisorLoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(AppRoute.SupervisorDashboard.route)
-                },
-                onBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // --------------------------------
-        // Worker Login
-        // --------------------------------
-        composable(AppRoute.WorkerLogin.route) {
-            WorkerLoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(AppRoute.WorkerDashboard.route)
-                },
-                onBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        // --------------------------------
-        // Supervisor Dashboard
-        // --------------------------------
+        // Supervisor Navigation
         composable(AppRoute.SupervisorDashboard.route) {
             val coroutineScope = rememberCoroutineScope()
-            SupervisorDashboardScreen(
-                onLogoutClick = {
+
+            SupervisorNavigation(
+                onLogout = {
                     coroutineScope.launch {
                         authRepository.logout()
                     }
@@ -220,13 +192,12 @@ fun AppNavigation() {
             )
         }
 
-        // --------------------------------
-        // Worker Dashboard
-        // --------------------------------
+        // Worker Navigation
         composable(AppRoute.WorkerDashboard.route) {
             val coroutineScope = rememberCoroutineScope()
-            WorkerDashboardScreen(
-                onLogoutClick = {
+
+            WorkerNavigation(
+                onLogout = {
                     coroutineScope.launch {
                         authRepository.logout()
                     }

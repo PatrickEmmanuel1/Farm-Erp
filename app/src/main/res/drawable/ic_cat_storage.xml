@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <path
+        android:fillColor="#EFEBE9"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Roof & Outer House -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M250,110L70,220v180a20,20 0 0 0 20,20h320a20,20 0 0 0 20,-20v-180z"/>
+    <!-- Roof Vent Circle -->
+    <path android:fillColor="#D7CCC8" android:pathData="M250,200a20,20 0 1,0 0,-40a20,20 0 1,0 0,40Z"/>
+    <!-- Warehouse Door Block -->
+    <path
+        android:fillColor="#D7CCC8"
+        android:pathData="M180,250h140a15,15 0 0 1 15,15v155h-170v-155a15,15 0 0 1 15,-15z"/>
+    <!-- Door Slats -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#5D4037"
+        android:strokeWidth="12"
+        android:strokeLineCap="round"
+        android:pathData="M190,290h120 M190,330h120 M190,370h120"/>
+</vector>

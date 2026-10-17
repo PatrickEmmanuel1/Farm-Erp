@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.storage.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,25 +47,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagerAddStorageScreen(
+    viewModel: StorageViewModel = viewModel(),
     onBackClick: () -> Unit = {},
-    onSaveClick: () -> Unit = {}
+    onSaveSuccess: () -> Unit = {}
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val facilityNames = (uiState as? StorageUiState.Success)?.facilities?.map { it.name } ?: emptyList()
 
     var cropName by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("kg") }
     var location by remember { mutableStateOf("") }
     var dateStored by remember { mutableStateOf("") }
-    var condition by remember { mutableStateOf("") }
+    var condition by remember { mutableStateOf("Good") }
     var notes by remember { mutableStateOf("") }
 
     var unitExpanded by remember { mutableStateOf(false) }
@@ -79,13 +86,14 @@ fun ManagerAddStorageScreen(
         "units"
     )
 
-    val locations = listOf(
+    val defaultLocations = listOf(
+        "Main Store",
         "Warehouse 1",
-        "Warehouse 2",
-        "Warehouse 3",
         "Cold Store A",
-        "Cold Store B"
+        "Silo 1"
     )
+
+    val locations = (facilityNames + defaultLocations).distinct()
 
     val conditions = listOf(
         "Good",
@@ -316,19 +324,11 @@ fun ManagerAddStorageScreen(
                 }
             }
 
-            OutlinedTextField(
+            DatePickerField(
                 value = dateStored,
                 onValueChange = { dateStored = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Date Stored") },
-                placeholder = { Text("DD/MM/YYYY") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null
-                    )
-                },
-                singleLine = true,
+                label = "Date Stored",
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
@@ -433,8 +433,21 @@ fun ManagerAddStorageScreen(
 
             Button(
                 onClick = {
-                    onSaveClick()
+                    val qty = quantity.toDoubleOrNull() ?: 0.0
+                    if (cropName.isNotBlank() && qty > 0) {
+                        viewModel.addProduce(
+                            cropName = cropName,
+                            quantity = qty,
+                            unit = unit.ifBlank { "kg" },
+                            location = location.ifBlank { "Main Store" },
+                            dateStored = dateStored,
+                            condition = condition.ifBlank { "Good" },
+                            onSuccess = { onSaveSuccess() },
+                            onError = { /* handled */ }
+                        )
+                    }
                 },
+                enabled = cropName.isNotBlank() && (quantity.toDoubleOrNull() ?: 0.0) > 0,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),

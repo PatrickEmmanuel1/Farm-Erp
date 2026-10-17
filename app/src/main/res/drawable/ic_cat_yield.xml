@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <path
+        android:fillColor="#FFF8E1"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Grain Stem -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="18"
+        android:strokeLineCap="round"
+        android:pathData="M220,90v340"/>
+    <!-- Grain Pods Left & Right -->
+    <path android:fillColor="#FFFFFF" android:pathData="M220,130C160,130 140,90 220,90C220,90 220,130 220,130Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,130C280,130 300,90 220,90C220,90 220,130 220,130Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,200C160,200 140,160 220,160C220,160 220,200 220,200Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,200C280,200 300,160 220,160C220,160 220,200 220,200Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,270C160,270 140,230 220,230C220,230 220,270 220,270Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,270C280,270 300,230 220,230C220,230 220,270 220,270Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,340C160,340 140,300 220,300C220,300 220,340 220,340Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M220,340C280,340 300,300 220,300C220,300 220,340 220,340Z"/>
+    <!-- Up-Right Arrow -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="20"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M340,210L420,130 M420,130H350 M420,130V200"/>
+</vector>

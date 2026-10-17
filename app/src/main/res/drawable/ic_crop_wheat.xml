@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <!-- Background -->
+    <path
+        android:fillColor="#FFF8E1"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Stem -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#795548"
+        android:strokeWidth="14"
+        android:strokeLineCap="round"
+        android:pathData="M250,120v310"/>
+    <!-- Leaves -->
+    <path android:fillColor="#8BC34A" android:pathData="M250,380C170,380 100,320 100,290C160,290 220,340 250,380Z"/>
+    <path android:fillColor="#8BC34A" android:pathData="M250,380C330,380 400,320 400,290C340,290 280,340 250,380Z"/>
+    <!-- Grain Clusters -->
+    <path android:fillColor="#E6EE9C" android:pathData="M250,100a18,18 0 1,0 36,0a18,18 0 1,0 -36,0 M214,100a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"/>
+    <path android:fillColor="#DCE775" android:pathData="M250,135a18,18 0 1,0 36,0a18,18 0 1,0 -36,0 M214,135a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"/>
+    <path android:fillColor="#D4E157" android:pathData="M250,170a18,18 0 1,0 36,0a18,18 0 1,0 -36,0 M214,170a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"/>
+    <path android:fillColor="#CDDC39" android:pathData="M250,205a18,18 0 1,0 36,0a18,18 0 1,0 -36,0 M214,205a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"/>
+    <path android:fillColor="#C0CA33" android:pathData="M250,240a18,18 0 1,0 36,0a18,18 0 1,0 -36,0 M214,240a18,18 0 1,0 36,0a18,18 0 1,0 -36,0"/>
+</vector>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Document Card -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M150,70h200a40,40 0 0 1 40,40v280a40,40 0 0 1 -40,40h-200a40,40 0 0 1 -40,-40v-280a40,40 0 0 1 40,-40z"/>
+    <!-- Top Document Lines -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#90CAF9"
+        android:strokeWidth="16"
+        android:strokeLineCap="round"
+        android:pathData="M160,130h130 M160,170h80"/>
+    <!-- Bar Chart Columns -->
+    <path android:fillColor="#90CAF9" android:pathData="M165,300h32a10,10 0 0 0 10,-10v-50a10,10 0 0 0 -10,-10h-32a10,10 0 0 0 -10,10v50a10,10 0 0 0 10,10z"/>
+    <path android:fillColor="#42A5F5" android:pathData="M234,300h32a10,10 0 0 0 10,-10v-90a10,10 0 0 0 -10,-10h-32a10,10 0 0 0 -10,10v90a10,10 0 0 0 10,10z"/>
+    <path android:fillColor="#1565C0" android:pathData="M303,300h32a10,10 0 0 0 10,-10v-140a10,10 0 0 0 -10,-10h-32a10,10 0 0 0 -10,10v140a10,10 0 0 0 10,10z"/>
+</vector>

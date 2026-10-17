@@ -11,7 +11,9 @@ import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.util.UUID
@@ -88,7 +90,8 @@ class AuthRepository(
     // Exact Supabase Database RPC Functions
     // -------------------------------------------------------------------
 
-    suspend fun get_my_account(): AccountSignUpResult? {
+
+    suspend fun getMyAccount(): AccountSignUpResult? {
         return try {
             client.postgrest.rpc("get_my_account").decodeSingleOrNull<AccountSignUpResult>()
         } catch (_: Exception) {
@@ -96,7 +99,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun get_my_role(): String? {
+    @Suppress( "unused")
+    suspend fun getMyRole(): String? {
         return try {
             client.postgrest.rpc("get_my_role").decodeSingleOrNull<String>()
         } catch (_: Exception) {
@@ -104,7 +108,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun current_user_role(): String? {
+    @Suppress( "unused")
+    suspend fun currentUserRole(): String? {
         return try {
             client.postgrest.rpc("current_user_role").decodeSingleOrNull<String>()
         } catch (_: Exception) {
@@ -112,7 +117,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun has_farm_access(farmId: String): Boolean {
+    @Suppress( "unused")
+    suspend fun hasFarmAccess(farmId: String): Boolean {
         return try {
             client.postgrest.rpc(
                 function = "has_farm_access",
@@ -123,7 +129,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun is_farm_manager(farmId: String): Boolean {
+    @Suppress( "unused")
+    suspend fun isFarmManager(farmId: String): Boolean {
         return try {
             client.postgrest.rpc(
                 function = "is_farm_manager",
@@ -134,7 +141,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun is_farm_supervisor(farmId: String): Boolean {
+    @Suppress( "unused")
+    suspend fun isFarmSupervisor(farmId: String): Boolean {
         return try {
             client.postgrest.rpc(
                 function = "is_farm_supervisor",
@@ -145,7 +153,8 @@ class AuthRepository(
         }
     }
 
-    suspend fun is_farm_worker(farmId: String): Boolean {
+    @Suppress( "unused")
+    suspend fun isFarmWorker(farmId: String): Boolean {
         return try {
             client.postgrest.rpc(
                 function = "is_farm_worker",
@@ -156,7 +165,7 @@ class AuthRepository(
         }
     }
 
-    suspend fun create_account(fullName: String, email: String, phoneNumber: String?, role: String = "Manager") {
+    suspend fun createAccount(fullName: String, email: String, phoneNumber: String?, role: String = "Manager") {
         try {
             client.postgrest.rpc(
                 function = "create_account",
@@ -173,6 +182,43 @@ class AuthRepository(
     // -------------------------------------------------------------------
     // Authentication Operations
     // -------------------------------------------------------------------
+
+    private fun sanitizeAuthErrorMessage(rawError: String?, isSignUp: Boolean = false): String {
+        if (rawError.isNullOrBlank()) {
+            return if (isSignUp) "Sign up failed. Please check your details and try again."
+                   else "Invalid credentials. Please check your email and password."
+        }
+
+        val lower = rawError.lowercase()
+
+        return when {
+            lower.contains("email_not_confirmed") ->
+                "Email not confirmed. Please check your inbox or confirm user in Supabase Dashboard."
+            lower.contains("invalid_credentials") || lower.contains("invalid login credentials") || lower.contains("invalid_grant") ->
+                "Invalid email or password. Please check your credentials and try again."
+            lower.contains("user_not_found") ->
+                "No account found for this email. Please sign up first."
+            lower.contains("user_already_exists") || lower.contains("already registered") ->
+                "An account with this email already exists. Please sign in instead."
+            lower.contains("password") && lower.contains("should be at least") ->
+                "Password must be at least 6 characters long."
+            else -> {
+                val cleanLine = rawError.lines().firstOrNull { line ->
+                    !line.contains("URL:", ignoreCase = true) &&
+                    !line.contains("Headers:", ignoreCase = true) &&
+                    !line.contains("Http Method:", ignoreCase = true)
+                }?.trim()
+
+                if (!cleanLine.isNullOrBlank() && cleanLine.length < 100) {
+                    cleanLine
+                } else if (isSignUp) {
+                    "Sign up failed. Please check your details and try again."
+                } else {
+                    "Invalid email or password. Please check your credentials and try again."
+                }
+            }
+        }
+    }
 
     suspend fun loginUser(
         email: String,
@@ -197,14 +243,9 @@ class AuthRepository(
                 authErrorMsg = e.message
             }
 
-            val isEmailNotConfirmed = authErrorMsg?.contains("email_not_confirmed", ignoreCase = true) == true
-
             if (!authSuccess) {
-                if (isEmailNotConfirmed) {
-                    return Result.failure(Exception("Email not confirmed for '$trimmedEmail'. Accounts created before disabling 'Confirm Email' must be manually confirmed in Supabase Dashboard -> Authentication -> Users (click '...' -> Confirm user), or run: UPDATE auth.users SET email_confirmed_at = now() WHERE email = '$trimmedEmail';"))
-                }
-                val msg = authErrorMsg ?: "Invalid credentials. Please check your email and password or sign up."
-                return Result.failure(Exception(msg))
+                val cleanMessage = sanitizeAuthErrorMessage(authErrorMsg, isSignUp = false)
+                return Result.failure(Exception(cleanMessage))
             }
 
             // 2. Query public.account table
@@ -226,12 +267,31 @@ class AuthRepository(
             val fallbackName = metaName ?: trimmedEmail.substringBefore("@").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 
             val dbAccount = accounts.firstOrNull()
+            val metaRole = authUser?.userMetadata?.get("role")?.jsonPrimitive?.contentOrNull
 
-            val userRole = when {
-                expectedRole.equals("Supervisor", ignoreCase = true) -> "Supervisor"
-                expectedRole.equals("Worker", ignoreCase = true) -> "Worker"
-                else -> dbAccount?.role ?: expectedRole ?: "Manager"
+            val currentAccountId = dbAccount?.accountId ?: authUser?.id.orEmpty()
+
+            val isSupervisorProfile = if (currentAccountId.isNotBlank()) {
+                try {
+                    client.from("supervisor_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>().isNotEmpty()
+                } catch (_: Exception) { false }
+            } else false
+
+            val isWorkerProfile = if (currentAccountId.isNotBlank() && !isSupervisorProfile) {
+                try {
+                    client.from("worker_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>().isNotEmpty()
+                } catch (_: Exception) { false }
+            } else false
+
+            val detectedRole = when {
+                isSupervisorProfile -> "Supervisor"
+                isWorkerProfile -> "Worker"
+                !dbAccount?.role.isNullOrBlank() -> dbAccount.role
+                !metaRole.isNullOrBlank() -> metaRole
+                else -> "Manager"
             }
+
+            val userRole = expectedRole ?: detectedRole
 
             val account = dbAccount ?: AccountSignUpResult(
                 accountId = authUser?.id ?: UUID.randomUUID().toString(),
@@ -268,7 +328,7 @@ class AuthRepository(
             )
             Result.success(account.copy(role = userRole))
         } catch (e: Exception) {
-            Result.failure(Exception(e.message ?: "Login failed. Please check your credentials."))
+            Result.failure(Exception(sanitizeAuthErrorMessage(e.message, isSignUp = false)))
         }
     }
 
@@ -316,15 +376,10 @@ class AuthRepository(
                 }
             }
 
-            val isEmailNotConfirmed = signUpError?.contains("email_not_confirmed", ignoreCase = true) == true
-
             // If neither signUp nor signIn established an auth session or returned user ID
             if (client.auth.currentSessionOrNull() == null && authUserId == null) {
-                if (isEmailNotConfirmed) {
-                    return Result.failure(Exception("Email not confirmed for '$trimmedEmail'. Please confirm user in Supabase Dashboard -> Authentication -> Users, or run: UPDATE auth.users SET email_confirmed_at = now() WHERE email = '$trimmedEmail';"))
-                }
-                val msg = signUpError ?: "Sign up failed. Please check your details and try again."
-                return Result.failure(Exception(msg))
+                val cleanMessage = sanitizeAuthErrorMessage(signUpError, isSignUp = true)
+                return Result.failure(Exception(cleanMessage))
             }
 
             val currentAuthId = authUserId ?: client.auth.currentUserOrNull()?.id ?: UUID.randomUUID().toString()
@@ -332,7 +387,7 @@ class AuthRepository(
             // 2. Insert row directly into public.account table or call create_account RPC
             var insertedAccount: AccountSignUpResult? = null
             try {
-                create_account(fullName = fullName, email = trimmedEmail, phoneNumber = phoneNumber, role = "Manager")
+                createAccount(fullName = fullName, email = trimmedEmail, phoneNumber = phoneNumber, role = "Manager")
             } catch (_: Exception) {
                 try {
                     insertedAccount = client.from("account")
@@ -397,7 +452,7 @@ class AuthRepository(
             val userEmail = user.email ?: return false
 
             // Fetch full account profile details from Supabase database
-            var account = get_my_account()
+            var account = getMyAccount()
 
             if (account == null) {
                 account = try {

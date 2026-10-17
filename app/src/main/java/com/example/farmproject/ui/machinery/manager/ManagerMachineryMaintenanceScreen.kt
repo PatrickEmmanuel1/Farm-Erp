@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.machinery.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -438,13 +440,10 @@ private fun RecordMaintenanceDialog(
                     }
                 }
 
-                OutlinedTextField(
+                DatePickerField(
                     value = dateText,
                     onValueChange = { dateText = it },
-                    label = { Text("Date (YYYY-MM-DD)") },
-                    placeholder = { Text("e.g. 2026-03-30") },
-                    leadingIcon = { Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null) },
-                    singleLine = true,
+                    label = "Maintenance Date",
                     modifier = Modifier.fillMaxWidth()
                 )
 

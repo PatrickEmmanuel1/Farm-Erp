@@ -76,6 +76,17 @@ class CropsViewModel(
         }
     }
 
+    fun deleteCrop(cropId: String) {
+        viewModelScope.launch {
+            try {
+                repository.deleteCrop(cropId)
+                loadCrops()
+            } catch (e: Exception) {
+                _saveState.value = CropSaveState.Error(e.message ?: "Failed to delete crop")
+            }
+        }
+    }
+
     fun resetSaveState() {
         _saveState.value = CropSaveState.Idle
     }

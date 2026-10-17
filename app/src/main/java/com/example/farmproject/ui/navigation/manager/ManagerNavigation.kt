@@ -44,6 +44,8 @@ import com.example.farmproject.ui.crops.manager.CropsViewModel
 import com.example.farmproject.ui.crops.manager.ManagerAddCropScreen
 import com.example.farmproject.ui.crops.manager.ManagerCropDetailsScreen
 import com.example.farmproject.ui.crops.manager.ManagerCropsScreen
+import com.example.farmproject.ui.crops.manager.ManagerYieldScreen
+import com.example.farmproject.ui.crops.manager.YieldViewModel
 import com.example.farmproject.ui.dashboard.manager.DashboardViewModel
 import com.example.farmproject.ui.dashboard.manager.ManagerDashboardScreen
 import com.example.farmproject.ui.divisions.manager.DivisionsViewModel
@@ -71,10 +73,16 @@ import com.example.farmproject.ui.machinery.manager.ManagerMachineryMaintenanceS
 import com.example.farmproject.ui.machinery.manager.ManagerMachineryScreen
 import com.example.farmproject.ui.more.manager.ManagerMoreScreen
 import com.example.farmproject.ui.notifications.manager.ManagerNotificationsScreen
+import com.example.farmproject.ui.reports.manager.ManagerGenerateReportScreen
+import com.example.farmproject.ui.reports.manager.ManagerReportDetailsScreen
+import com.example.farmproject.ui.reports.manager.ManagerReportsScreen
+import com.example.farmproject.ui.reports.manager.ReportsViewModel
+import com.example.farmproject.ui.notifications.manager.NotificationViewModel
 import com.example.farmproject.ui.recommendations.manager.ManagerRecommendationsScreen
 import com.example.farmproject.ui.settings.manager.ManagerFarmDetailsScreen
 import com.example.farmproject.ui.settings.manager.ManagerProfileScreen
 import com.example.farmproject.ui.settings.manager.ManagerSettingsScreen
+import com.example.farmproject.ui.attendance.manager.ManagerAttendanceScreen
 import com.example.farmproject.ui.storage.manager.ManagerAddStorageScreen
 import com.example.farmproject.ui.storage.manager.ManagerStorageDetailsScreen
 import com.example.farmproject.ui.storage.manager.ManagerStorageScreen
@@ -145,6 +153,7 @@ private object ManagerRoutes {
     const val ADD_MACHINERY = "manager_add_machinery"
     const val ADD_CROP = "manager_add_crop"
     const val CROP_DETAILS = "manager_crop_details/{plantingId}"
+    const val YIELD = "manager_yield"
     const val ADD_FARM_ACTIVITY = "manager_add_farm_activity"
     const val EDIT_FARM_ACTIVITY = "manager_edit_farm_activity/{activityId}"
     const val FARM_ACTIVITY_DETAILS = "manager_farm_activity_details/{activityId}"
@@ -162,6 +171,10 @@ private object ManagerRoutes {
     const val NOTIFICATIONS = "manager_notifications"
     const val MACHINERY_IN_USE = "manager_machinery_in_use"
     const val MACHINERY_MAINTENANCE = "manager_machinery_maintenance"
+    const val REPORTS = "manager_reports"
+    const val GENERATE_REPORT = "manager_generate_report"
+    const val REPORT_DETAILS = "manager_report_details/{reportTitle}"
+    const val ATTENDANCE = "manager_attendance"
 }
 
 /**
@@ -176,7 +189,11 @@ private inline fun <reified VM : ViewModel> sharedViewModel(
     backStackEntry: NavBackStackEntry
 ): VM {
     val parentEntry = remember(backStackEntry) {
-        navController.getBackStackEntry(route)
+        try {
+            navController.getBackStackEntry(route)
+        } catch (_: Exception) {
+            backStackEntry
+        }
     }
     return viewModel(parentEntry)
 }
@@ -276,8 +293,13 @@ fun ManagerNavigation(
                         onInventoryClick = { navController.navigate(ManagerRoutes.INVENTORY) },
                         onWorkersClick = { navigateToTab(ManagerTab.Employees.route) },
                         onMachineryClick = { navController.navigate(ManagerRoutes.MACHINERY) },
+                        onStorageClick = { navController.navigate(ManagerRoutes.STORAGE) },
                         onDivisionsClick = { navController.navigate(ManagerRoutes.DIVISIONS) },
-                        onActivitiesClick = { navigateToTab(ManagerTab.FarmActivities.route) }
+                        onActivitiesClick = { navigateToTab(ManagerTab.FarmActivities.route) },
+                        onAddCropClick = { navController.navigate(ManagerRoutes.ADD_CROP) },
+                        onLogActivityClick = { navController.navigate(ManagerRoutes.ADD_FARM_ACTIVITY) },
+                        onAddWorkerClick = { navController.navigate(ManagerRoutes.ADD_WORKER) },
+                        onReportsClick = { navController.navigate(ManagerRoutes.REPORTS) }
                     )
                 }
 
@@ -331,10 +353,25 @@ fun ManagerNavigation(
                                 ManagerRoutes.ADD_CROP
                             )
                         },
+                        onYieldsClick = {
+                            navController.navigate(
+                                ManagerRoutes.YIELD
+                            )
+                        },
                         onCropClick = { plantingId ->
                             navController.navigate(
                                 "manager_crop_details/$plantingId"
                             )
+                        }
+                    )
+                }
+
+                composable(ManagerRoutes.YIELD) {
+                    val viewModel: YieldViewModel = viewModel()
+                    ManagerYieldScreen(
+                        viewModel = viewModel,
+                        onBackClick = {
+                            navController.popBackStack()
                         }
                     )
                 }
@@ -392,6 +429,7 @@ fun ManagerNavigation(
                             // No edit flow yet.
                         },
                         onDeleteClick = {
+                            viewModel.deleteCrop(cropId)
                             navController.popBackStack()
                         }
                     )
@@ -436,10 +474,12 @@ fun ManagerNavigation(
                         activityTypes = formOptions.activityTypeNames,
                         divisions = formOptions.divisions,
                         machineryList = formOptions.machinery,
+                        workers = formOptions.workers,
+                        supervisors = formOptions.supervisors,
                         onBackClick = {
                             navController.popBackStack()
                         },
-                        onSaveClick = { activityTypeName, activityName, dueDate, notes, assignedRole, divisionId, quantity, quantityUnit, equipmentNeeded ->
+                        onSaveClick = { activityTypeName, activityName, dueDate, notes, assignedRole, workerProfileId, supervisorProfileId, divisionId, quantity, quantityUnit, equipmentNeeded ->
                             viewModel.addActivity(
                                 activityTypeName = activityTypeName,
                                 activityName = activityName,
@@ -447,6 +487,8 @@ fun ManagerNavigation(
                                 status = "Pending",
                                 notes = notes,
                                 assignedRole = assignedRole,
+                                workerProfileId = workerProfileId,
+                                supervisorProfileId = supervisorProfileId,
                                 divisionId = divisionId,
                                 quantity = quantity,
                                 quantityUnit = quantityUnit,
@@ -562,6 +604,8 @@ fun ManagerNavigation(
                         initialDueDate = display?.activity?.safeActivityDate.orEmpty(),
                         initialNotes = display?.activity?.notes.orEmpty(),
                         initialRole = display?.assignedToName.orEmpty(),
+                        initialWorkerProfileId = display?.activity?.workerProfileId,
+                        initialSupervisorProfileId = display?.activity?.supervisorProfileId,
                         initialDivisionId = display?.activity?.divisionId,
                         initialQuantity = display?.activity?.quantity,
                         initialQuantityUnit = display?.activity?.quantityUnit,
@@ -570,10 +614,12 @@ fun ManagerNavigation(
                         activityTypes = formOptions.activityTypeNames,
                         divisions = formOptions.divisions,
                         machineryList = formOptions.machinery,
+                        workers = formOptions.workers,
+                        supervisors = formOptions.supervisors,
                         onBackClick = {
                             navController.popBackStack()
                         },
-                        onSaveClick = { activityTypeName, activityName, dueDate, notes, assignedRole, divisionId, quantity, quantityUnit, equipmentNeeded ->
+                        onSaveClick = { activityTypeName, activityName, dueDate, notes, assignedRole, workerProfileId, supervisorProfileId, divisionId, quantity, quantityUnit, equipmentNeeded ->
                             viewModel.updateActivity(
                                 activityId = activityId,
                                 activityTypeName = activityTypeName,
@@ -581,6 +627,8 @@ fun ManagerNavigation(
                                 activityDate = dueDate,
                                 notes = notes,
                                 assignedRole = assignedRole,
+                                workerProfileId = workerProfileId,
+                                supervisorProfileId = supervisorProfileId,
                                 divisionId = divisionId,
                                 quantity = quantity,
                                 quantityUnit = quantityUnit,
@@ -937,12 +985,19 @@ fun ManagerNavigation(
                     val detailState by viewModel.detailState.collectAsStateWithLifecycle()
                     val success = detailState as? MachineryDetailUiState.Success
 
+                    val purchaseCostFormatted = success?.machinery?.purchaseCost?.let {
+                        String.format(Locale.US, "KES %,.2f", it)
+                    } ?: ""
+
                     ManagerMachineryDetailsScreen(
                         machineName = success?.machinery?.name ?: "Loading...",
                         machineType = success?.machinery?.machineryType ?: "",
                         status = success?.machinery?.status ?: "",
                         condition = success?.machinery?.condition ?: "",
                         location = success?.machinery?.location ?: "Not set",
+                        purchaseDate = success?.machinery?.purchaseDate.orEmpty(),
+                        purchaseCost = purchaseCostFormatted,
+                        rawPurchaseCost = success?.machinery?.purchaseCost?.toString().orEmpty(),
                         totalHoursUsed = success?.let { "${it.totalHoursUsed} hrs" } ?: "0 hrs",
                         totalFuelUsed = success?.let { "${it.totalFuelUsed} litres" } ?: "0 litres",
                         lastMaintenance = success?.lastMaintenanceDate ?: "No maintenance recorded",
@@ -950,8 +1005,8 @@ fun ManagerNavigation(
                         onBackClick = {
                             navController.popBackStack()
                         },
-                        onEditClick = {
-                            // No edit flow yet.
+                        onEditSave = { name, purchaseDate, purchaseCost ->
+                            viewModel.updateMachineryDetails(machineryId, name, purchaseDate, purchaseCost)
                         },
                         onDeleteClick = {
                             viewModel.deleteMachinery(machineryId)
@@ -1003,6 +1058,11 @@ fun ManagerNavigation(
                         onBackClick = {
                             navigateToTab(ManagerTab.Dashboard.route)
                         },
+                        onAttendanceClick = {
+                            navController.navigate(
+                                ManagerRoutes.ATTENDANCE
+                            )
+                        },
                         onInventoryClick = {
                             navController.navigate(
                                 ManagerRoutes.INVENTORY
@@ -1011,6 +1071,21 @@ fun ManagerNavigation(
                         onMachineryClick = {
                             navController.navigate(
                                 ManagerRoutes.MACHINERY
+                            )
+                        },
+                        onStorageClick = {
+                            navController.navigate(
+                                ManagerRoutes.STORAGE
+                            )
+                        },
+                        onYieldsClick = {
+                            navController.navigate(
+                                ManagerRoutes.YIELD
+                            )
+                        },
+                        onReportsClick = {
+                            navController.navigate(
+                                ManagerRoutes.REPORTS
                             )
                         },
                         onCropRecommendationsClick = {
@@ -1024,6 +1099,65 @@ fun ManagerNavigation(
                             )
                         },
                         onLogoutClick = onLogout
+                    )
+                }
+
+                composable(ManagerRoutes.REPORTS) {
+                    val reportsViewModel: ReportsViewModel = viewModel()
+                    val uiState by reportsViewModel.state.collectAsStateWithLifecycle()
+                    ManagerReportsScreen(
+                        uiState = uiState,
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        onGenerateReportClick = {
+                            navController.navigate(ManagerRoutes.GENERATE_REPORT)
+                        },
+                        onReportClick = { code ->
+                            reportsViewModel.openByTitleOrCode(code)
+                            navController.navigate("manager_report_details/$code")
+                        }
+                    )
+                }
+
+                composable(ManagerRoutes.GENERATE_REPORT) { backStackEntry ->
+                    val reportsViewModel: ReportsViewModel = sharedViewModel(navController, ManagerRoutes.REPORTS, backStackEntry)
+                    ManagerGenerateReportScreen(
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        onGenerateClick = { selectedType ->
+                            reportsViewModel.generateByCode(selectedType)
+                            navController.popBackStack()
+                            navController.navigate("manager_report_details/$selectedType")
+                        }
+                    )
+                }
+
+                composable(
+                    route = ManagerRoutes.REPORT_DETAILS,
+                    arguments = listOf(navArgument("reportTitle") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val reportTitle = backStackEntry.arguments?.getString("reportTitle") ?: "crop_yield"
+                    val reportsViewModel: ReportsViewModel = sharedViewModel(navController, ManagerRoutes.REPORTS, backStackEntry)
+                    val uiState by reportsViewModel.state.collectAsStateWithLifecycle()
+
+                    LaunchedEffect(reportTitle) {
+                        if (uiState.detail == null || !uiState.detail!!.category.code.equals(reportTitle, ignoreCase = true)) {
+                            reportsViewModel.openByTitleOrCode(reportTitle)
+                        }
+                    }
+
+                    ManagerReportDetailsScreen(
+                        detail = uiState.detail,
+                        titleFallback = reportTitle,
+                        isLoading = uiState.isLoading,
+                        onBackClick = {
+                            navController.popBackStack()
+                        },
+                        onRegenerateClick = {
+                            navController.navigate(ManagerRoutes.GENERATE_REPORT)
+                        }
                     )
                 }
 
@@ -1069,7 +1203,9 @@ fun ManagerNavigation(
                 }
 
                 composable(ManagerRoutes.NOTIFICATIONS) {
+                    val viewModel: NotificationViewModel = viewModel()
                     ManagerNotificationsScreen(
+                        viewModel = viewModel,
                         onBackClick = {
                             navController.popBackStack()
                         }
@@ -1103,7 +1239,7 @@ fun ManagerNavigation(
                         onBackClick = {
                             navController.popBackStack()
                         },
-                        onSaveClick = {
+                        onSaveSuccess = {
                             navController.popBackStack()
                         }
                     )
@@ -1118,6 +1254,14 @@ fun ManagerNavigation(
                             // No edit flow yet.
                         },
                         onDeleteClick = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(ManagerRoutes.ATTENDANCE) {
+                    ManagerAttendanceScreen(
+                        onBackClick = {
                             navController.popBackStack()
                         }
                     )

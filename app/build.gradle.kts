@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.storage.kt)
     implementation(libs.auth.kt)
     implementation(libs.functions.kt)
+    implementation(libs.realtime.kt)
 
     implementation(libs.ktor.client.android)
     testImplementation(libs.junit)

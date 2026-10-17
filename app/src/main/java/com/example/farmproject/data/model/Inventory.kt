@@ -22,17 +22,21 @@ data class StockIssuance(
     @SerialName("quantity_issued") val quantityIssued: Double? = null,
     val unit: String? = null,
     @SerialName("issued_to") val issuedTo: String? = null,
+    @SerialName("issued_by") val issuedBy: String? = null,
+    @SerialName("division_id") val divisionId: String? = null,
+    @SerialName("division_name") val divisionName: String? = null,
     @SerialName("issue_date") val issueDate: String? = null,
     val notes: String? = null,
-    @SerialName("farm_id") val farmId: String? = null
+    @SerialName("farm_id") val farmId: String? = null,
+    val status: String? = "Issued",
 ) {
     val safeIssuanceId: String get() = issuanceId.orEmpty().ifBlank { UUID.randomUUID().toString() }
     val safeItemId: String get() = itemId.orEmpty()
     val safeCategory: String get() = category.orEmpty()
     val safeItemName: String get() = itemName.orEmpty().ifBlank { "Stock Item" }
     val safeQuantityIssued: Double get() = quantityIssued ?: 0.0
-    val safeUnit: String get() = unit.orEmpty().ifBlank { "litres" }
-    val safeIssuedTo: String get() = issuedTo.orEmpty().ifBlank { "General Field" }
+    val safeUnit: String get() = unit.orEmpty().ifBlank { "units" }
+    val safeIssuedTo: String get() = divisionName?.ifBlank { null } ?: issuedTo.orEmpty().ifBlank { "General Field" }
     val safeIssueDate: String get() = issueDate.orEmpty().ifBlank { "2026-03-30" }
 }
 

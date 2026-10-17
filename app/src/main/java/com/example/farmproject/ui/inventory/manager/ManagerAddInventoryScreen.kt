@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.inventory.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.farmproject.data.model.InventoryCategory
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,6 +127,7 @@ fun ManagerAddInventoryScreen(
     var expiryDate by remember { mutableStateOf("") }
     var storageLocation by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var dateError by remember { mutableStateOf<String?>(null) }
 
     // Dropdowns
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -205,7 +209,7 @@ fun ManagerAddInventoryScreen(
         isFungicide -> "Add fungicide"
         isInsecticide -> "Add insecticide"
         isPesticideGeneral -> "Add pesticide"
-        else -> "Add inventory item"
+        else -> "Add resource item"
     }
 
     val subtitleText = when {
@@ -214,7 +218,7 @@ fun ManagerAddInventoryScreen(
         isFungicide -> "Register a new fungicide chemical"
         isInsecticide -> "Register a new insecticide chemical"
         isPesticideGeneral -> "Register a new pesticide chemical"
-        else -> "Register a new farm input"
+        else -> "Register a new farm resource input"
     }
 
     Scaffold(
@@ -994,36 +998,20 @@ fun ManagerAddInventoryScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
+                DatePickerField(
                     value = purchaseDate,
                     onValueChange = { purchaseDate = it },
                     modifier = Modifier.weight(1f),
-                    label = { Text("Purchase date") },
-                    placeholder = { Text("YYYY-MM-DD") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null
-                        )
-                    },
-                    singleLine = true,
+                    label = "Purchase date",
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                OutlinedTextField(
+                DatePickerField(
                     value = expiryDate,
                     onValueChange = { expiryDate = it },
                     modifier = Modifier.weight(1f),
-                    label = { Text("Expiry date") },
-                    placeholder = { Text("YYYY-MM-DD") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null
-                        )
-                    },
-                    singleLine = true,
+                    label = "Expiry date",
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -1099,6 +1087,14 @@ fun ManagerAddInventoryScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            dateError?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
 
             // ACTION BUTTONS (CANCEL & SAVE)
@@ -1122,6 +1118,21 @@ fun ManagerAddInventoryScreen(
 
                 Button(
                     onClick = {
+                        dateError = null
+
+                        val today = try { LocalDate.now() } catch (_: Exception) { null }
+                        val pDate = if (purchaseDate.isNotBlank()) try { LocalDate.parse(purchaseDate.trim()) } catch (_: Exception) { null } else null
+                        val eDate = if (expiryDate.isNotBlank()) try { LocalDate.parse(expiryDate.trim()) } catch (_: Exception) { null } else null
+
+                        if (pDate != null && today != null && pDate.isBefore(today)) {
+                            dateError = "Purchase date cannot be in the past."
+                            return@Button
+                        }
+
+                        if (eDate != null && today != null && eDate.isBefore(today)) {
+                            dateError = "Expiry date cannot be in the past."
+                            return@Button
+                        }
                         val categoryEnum = InventoryCategory.entries
                             .firstOrNull { it.displayName.equals(categoryText, ignoreCase = true) }
                             ?: InventoryCategory.PESTICIDE

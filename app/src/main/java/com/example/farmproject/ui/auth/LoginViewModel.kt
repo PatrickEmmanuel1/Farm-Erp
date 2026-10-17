@@ -22,7 +22,7 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun login(email: String, password: String, expectedRole: String) {
+    fun login(email: String, password: String, expectedRole: String? = null) {
         viewModelScope.launch {
             _uiState.value = LoginUiState.Loading
             val result = repository.loginUser(

@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.machinery.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -287,19 +289,11 @@ fun ManagerAddMachineryScreen(
                 title = "Purchase Information"
             )
 
-            OutlinedTextField(
+            DatePickerField(
                 value = purchaseDate,
                 onValueChange = { purchaseDate = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Purchase Date") },
-                placeholder = { Text("DD/MM/YYYY") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null
-                    )
-                },
-                singleLine = true,
+                label = "Purchase Date",
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )

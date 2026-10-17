@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <!-- Rounded Background -->
+    <path
+        android:fillColor="#F0EAE1"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Coffee Bean Body -->
+    <path
+        android:fillColor="#6F4E37"
+        android:pathData="M371.3,271.3c-23.7,78.2 -94.3,106.8 -168,84.4s-114,-100.8 -90.3,-179 94.3,-106.8 168,-84.4S395,193.1 371.3,271.3z"/>
+    <!-- Center S-Curve Stripe -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D7C8B6"
+        android:strokeWidth="20"
+        android:strokeLineCap="round"
+        android:pathData="M157.4,355.7C200,320 230,280 250,220c15,-45 25,-85 84.1,-100.9"/>
+</vector>

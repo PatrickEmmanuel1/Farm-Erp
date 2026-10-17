@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <path
+        android:fillColor="#F3E5F5"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Hourglass Glass Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M130,110h240v10a120,120 0 0 1 -70,110a120,120 0 0 1 70,110v10h-240v-10a120,120 0 0 1 70,-110a120,120 0 0 1 -70,-110z"/>
+    <!-- Top and Bottom Plates -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M110,90h280a15,15 0 0 1 15,15v10a15,15 0 0 1 -15,15h-280a15,15 0 0 1 -15,-15v-10a15,15 0 0 1 15,-15z M110,370h280a15,15 0 0 1 15,15v10a15,15 0 0 1 -15,15h-280a15,15 0 0 1 -15,-15v-10a15,15 0 0 1 15,-15z"/>
+    <!-- Sand Stream and Bottom Sand -->
+    <path
+        android:fillColor="#7B1FA2"
+        android:pathData="M242,220h16v100h-16z M175,350c30,-40 120,-40 150,0z"/>
+</vector>

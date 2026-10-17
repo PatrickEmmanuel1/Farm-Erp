@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -190,11 +191,23 @@ fun ManagerAddCropScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (saveState is CropSaveState.Error) {
+                Text(
+                    text = (saveState as CropSaveState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val isSaving = saveState is CropSaveState.Saving
 
             // Save Button
             Button(
                 onClick = {
+                    if (isSaving) return@Button
+
                     if (cropName.isBlank()) {
                         cropNameError = "Please enter a crop name"
                     } else {
@@ -205,6 +218,7 @@ fun ManagerAddCropScreen(
                         )
                     }
                 },
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
@@ -213,18 +227,26 @@ fun ManagerAddCropScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null
-                )
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Text(
-                    text = "Save Crop",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                    Text(
+                        text = "Save Crop",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

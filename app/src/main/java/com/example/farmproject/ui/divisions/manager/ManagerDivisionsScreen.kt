@@ -28,6 +28,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -218,11 +219,11 @@ fun ManagerDivisionsScreen(
                             divisionName = division.name,
                             availableCrops = availableCrops,
                             onDismiss = { selectedDivisionForAssign = null },
-                            onCropSelected = { crop ->
-                                val cropId = crop.cropId
+                            onCropsSelected = { selectedCrops ->
+                                val cropIds = selectedCrops.mapNotNull { it.cropId }
                                 val divisionId = division.divisionId
-                                if (cropId != null && divisionId != null) {
-                                    viewModel.assignCropToDivision(cropId, divisionId)
+                                if (cropIds.isNotEmpty() && divisionId != null) {
+                                    viewModel.assignCropsToDivision(cropIds, divisionId)
                                 }
                                 selectedDivisionForAssign = null
                             }
@@ -239,9 +240,9 @@ private fun AssignCropDialog(
     divisionName: String,
     availableCrops: List<Crop>,
     onDismiss: () -> Unit,
-    onCropSelected: (Crop) -> Unit
+    onCropsSelected: (List<Crop>) -> Unit
 ) {
-    var selectedCrop by remember { mutableStateOf<Crop?>(availableCrops.firstOrNull()) }
+    var selectedCrops by remember { mutableStateOf(setOf<Crop>()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -263,21 +264,27 @@ private fun AssignCropDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Select a crop to grow in $divisionName:",
+                        text = "Select crop(s) to grow in $divisionName:",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
                     availableCrops.forEach { crop ->
+                        val isSelected = selectedCrops.contains(crop)
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { selectedCrop = crop }
+                                .clickable {
+                                    selectedCrops = if (isSelected) selectedCrops - crop else selectedCrops + crop
+                                }
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            RadioButton(
-                                selected = selectedCrop?.cropId == crop.cropId,
-                                onClick = { selectedCrop = crop }
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { checked ->
+                                    selectedCrops = if (checked) selectedCrops + crop else selectedCrops - crop
+                                }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
@@ -302,9 +309,9 @@ private fun AssignCropDialog(
             if (availableCrops.isNotEmpty()) {
                 Button(
                     onClick = {
-                        selectedCrop?.let { onCropSelected(it) }
+                        onCropsSelected(selectedCrops.toList())
                     },
-                    enabled = selectedCrop != null
+                    enabled = selectedCrops.isNotEmpty()
                 ) {
                     Text("Assign")
                 }

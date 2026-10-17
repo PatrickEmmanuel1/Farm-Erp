@@ -108,7 +108,7 @@ fun ManagerInventoryDetailsScreen(
                     )
 
                     Text(
-                        text = "Inventory item details",
+                        text = "Resource item details",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 12.sp
                     )

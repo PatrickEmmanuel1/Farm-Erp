@@ -17,11 +17,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Agriculture
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PrecisionManufacturing
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +54,10 @@ fun ManagerMoreScreen(
     onBackClick: () -> Unit = {},
     onInventoryClick: () -> Unit = {},
     onMachineryClick: () -> Unit = {},
+    onStorageClick: () -> Unit = {},
+    onAttendanceClick: () -> Unit = {},
+    onYieldsClick: () -> Unit = {},
+    onReportsClick: () -> Unit = {},
     onFarmActivitiesClick: () -> Unit = {},
     onEmployeesClick: () -> Unit = {},
     onCropRecommendationsClick: () -> Unit = {},
@@ -59,14 +67,34 @@ fun ManagerMoreScreen(
 
     val menuItems = listOf(
         MoreMenuItem(
-            title = "Inventory",
-            description = "Track fertilizers, chemicals & inputs",
+            title = "Worker Attendance",
+            description = "Daily field clock-in, status & attendance logs",
+            icon = Icons.Default.CalendarMonth
+        ),
+        MoreMenuItem(
+            title = "Resources",
+            description = "Track fertilizers, chemicals, water & farm resources",
             icon = Icons.Default.Inventory
         ),
         MoreMenuItem(
             title = "Machinery",
             description = "Manage farm machinery & maintenance",
             icon = Icons.Default.PrecisionManufacturing
+        ),
+        MoreMenuItem(
+            title = "Storage Produce",
+            description = "Manage harvested produce & storage locations",
+            icon = Icons.Default.Warehouse
+        ),
+        MoreMenuItem(
+            title = "Crop Yields",
+            description = "Record and view crop harvest logs",
+            icon = Icons.Default.Agriculture
+        ),
+        MoreMenuItem(
+            title = "Reports & Summaries",
+            description = "View crop, inventory, machinery & workforce reports",
+            icon = Icons.Default.Assessment
         ),
         MoreMenuItem(
             title = "Get Tips",
@@ -81,8 +109,12 @@ fun ManagerMoreScreen(
     )
 
     val menuActions: Map<String, () -> Unit> = mapOf(
-        "Inventory" to onInventoryClick,
+        "Worker Attendance" to onAttendanceClick,
+        "Resources" to onInventoryClick,
         "Machinery" to onMachineryClick,
+        "Storage Produce" to onStorageClick,
+        "Crop Yields" to onYieldsClick,
+        "Reports & Summaries" to onReportsClick,
         "Get Tips" to onCropRecommendationsClick,
         "Settings" to onSettingsClick
     )

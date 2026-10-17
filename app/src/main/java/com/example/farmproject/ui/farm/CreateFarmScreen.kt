@@ -152,7 +152,7 @@ fun CreateFarmScreen(
                         )
 
                         Text(
-                            text = "To manage crops, inventory & workers, please create your farm profile first.",
+                            text = "To manage crops, resources & workers, please create your farm profile first.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                         )

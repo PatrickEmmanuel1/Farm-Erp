@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.activities.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.farmproject.data.model.Division
+import com.example.farmproject.data.model.EmployeeDisplay
 import com.example.farmproject.data.model.Machinery
 import java.time.LocalDate
 
@@ -88,6 +91,8 @@ fun ManagerEditFarmActivityScreen(
     initialQuantity: Double? = null,
     initialQuantityUnit: String? = null,
     initialEquipmentNeeded: String? = null,
+    initialWorkerProfileId: String? = null,
+    initialSupervisorProfileId: String? = null,
     viewModel: FarmActivitiesViewModel = viewModel(),
     activityTypes: List<String> = listOf(
         "Planting",
@@ -100,6 +105,8 @@ fun ManagerEditFarmActivityScreen(
     ),
     divisions: List<Division> = emptyList(),
     machineryList: List<Machinery> = emptyList(),
+    workers: List<EmployeeDisplay> = emptyList(),
+    supervisors: List<EmployeeDisplay> = emptyList(),
     onBackClick: () -> Unit = {},
     onSaveClick: (
         activityTypeName: String,
@@ -107,11 +114,13 @@ fun ManagerEditFarmActivityScreen(
         dueDate: String,
         notes: String?,
         assignedRole: String,
+        workerProfileId: String?,
+        supervisorProfileId: String?,
         divisionId: String?,
         quantity: Double?,
         quantityUnit: String?,
         equipmentNeeded: String?
-    ) -> Unit = { _, _, _, _, _, _, _, _, _ -> }
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
 
@@ -136,10 +145,16 @@ fun ManagerEditFarmActivityScreen(
     var dueDate by remember(initialDueDate) { mutableStateOf(initialDueDate.ifBlank { todayDateStr }) }
     var notes by remember(initialNotes) { mutableStateOf(initialCleanNotes) }
     var assignedRole by remember(initialRole) { mutableStateOf(if (initialRole.contains("Supervisor", ignoreCase = true)) "Supervisor" else "Worker") }
+    var selectedWorkerProfileId by remember(initialWorkerProfileId) { mutableStateOf(initialWorkerProfileId) }
+    var selectedSupervisorProfileId by remember(initialSupervisorProfileId) { mutableStateOf(initialSupervisorProfileId) }
+    var assigneeDropdownExpanded by remember { mutableStateOf(false) }
     var quantityText by remember(initialQuantity) { mutableStateOf(initialQuantity?.toString().orEmpty()) }
     var quantityUnitText by remember(initialQuantityUnit) { mutableStateOf(initialQuantityUnit.orEmpty()) }
     var expectedHarvestDateText by remember(initialNotes) { mutableStateOf(initialExtractedDate) }
     var selectedMachineryName by remember(initialEquipmentNeeded) { mutableStateOf(initialEquipmentNeeded.orEmpty()) }
+
+    var dueDateError by remember { mutableStateOf<String?>(null) }
+    var harvestDateError by remember { mutableStateOf<String?>(null) }
 
     val isPlantingType = activityType.contains("Planting", ignoreCase = true) ||
             activityType.contains("Transplanting", ignoreCase = true)
@@ -275,10 +290,16 @@ fun ManagerEditFarmActivityScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // ASSIGNED ROLE (Worker vs Supervisor)
+            // ASSIGNED ROLE & SPECIFIC EMPLOYEE SELECTION
             SectionTitle(
                 icon = Icons.Default.Badge,
-                title = "Target Role"
+                title = "Assigned Employee & Role"
+            )
+
+            Text(
+                text = "Select whether this task is intended for a Worker or a Supervisor:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Row(
@@ -287,17 +308,78 @@ fun ManagerEditFarmActivityScreen(
             ) {
                 FilterChip(
                     selected = assignedRole == "Worker",
-                    onClick = { assignedRole = "Worker" },
+                    onClick = {
+                        assignedRole = "Worker"
+                        selectedSupervisorProfileId = null
+                    },
                     label = { Text("Worker") },
                     modifier = Modifier.weight(1f)
                 )
 
                 FilterChip(
                     selected = assignedRole == "Supervisor",
-                    onClick = { assignedRole = "Supervisor" },
+                    onClick = {
+                        assignedRole = "Supervisor"
+                        selectedWorkerProfileId = null
+                    },
                     label = { Text("Supervisor") },
                     modifier = Modifier.weight(1f)
                 )
+            }
+
+            // SPECIFIC EMPLOYEE DROPDOWN
+            val availableEmployees = if (assignedRole == "Worker") workers else supervisors
+            val selectedProfileId = if (assignedRole == "Worker") selectedWorkerProfileId else selectedSupervisorProfileId
+            val selectedEmployeeName = availableEmployees.find { it.profileId == selectedProfileId }?.let {
+                "${it.fullName}${if (!it.employeeNumber.isNullOrBlank()) " (${it.employeeNumber})" else ""}"
+            } ?: "Unassigned / Any $assignedRole"
+
+            ExposedDropdownMenuBox(
+                expanded = assigneeDropdownExpanded,
+                onExpandedChange = { assigneeDropdownExpanded = !assigneeDropdownExpanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedEmployeeName,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    label = { Text("Select Specific $assignedRole") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeDropdownExpanded) },
+                    colors = fieldColors,
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                ExposedDropdownMenu(
+                    expanded = assigneeDropdownExpanded,
+                    onDismissRequest = { assigneeDropdownExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Unassigned / Any $assignedRole") },
+                        onClick = {
+                            if (assignedRole == "Worker") selectedWorkerProfileId = null else selectedSupervisorProfileId = null
+                            assigneeDropdownExpanded = false
+                        }
+                    )
+
+                    availableEmployees.forEach { emp ->
+                        val labelText = "${emp.fullName}${if (!emp.employeeNumber.isNullOrBlank()) " (${emp.employeeNumber})" else ""}"
+                        DropdownMenuItem(
+                            text = { Text(labelText) },
+                            onClick = {
+                                if (assignedRole == "Worker") {
+                                    selectedWorkerProfileId = emp.profileId
+                                    selectedSupervisorProfileId = null
+                                } else {
+                                    selectedSupervisorProfileId = emp.profileId
+                                    selectedWorkerProfileId = null
+                                }
+                                assigneeDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
             }
 
             // FARM LOCATION / DIVISION SELECTION
@@ -464,7 +546,7 @@ fun ManagerEditFarmActivityScreen(
             // QUANTITY & MEASUREMENT
             SectionTitle(
                 icon = Icons.Default.Numbers,
-                title = if (isPlantingType) "Planting Details & Measurement" else "Quantity & Measurement"
+                title = "Quantity & Measurement"
             )
 
             Row(
@@ -475,7 +557,7 @@ fun ManagerEditFarmActivityScreen(
                     value = quantityText,
                     onValueChange = { quantityText = it },
                     modifier = Modifier.weight(1f),
-                    label = { Text(if (isPlantingType) "Quantity Planted" else "Quantity (optional)") },
+                    label = { Text("Quantity") },
                     placeholder = { Text("e.g. 50") },
                     leadingIcon = {
                         Icon(
@@ -508,19 +590,16 @@ fun ManagerEditFarmActivityScreen(
             }
 
             if (isPlantingType) {
-                OutlinedTextField(
+                DatePickerField(
                     value = expectedHarvestDateText,
-                    onValueChange = { expectedHarvestDateText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Expected Harvest Date (YYYY-MM-DD)") },
-                    placeholder = { Text("e.g. 2026-12-15") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.CalendarMonth,
-                            contentDescription = null
-                        )
+                    onValueChange = {
+                        expectedHarvestDateText = it
+                        harvestDateError = null
                     },
-                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = "Expected Harvest Date",
+                    isError = harvestDateError != null,
+                    supportingText = harvestDateError?.let { { Text(it) } },
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -532,19 +611,16 @@ fun ManagerEditFarmActivityScreen(
                 title = "Schedule Details"
             )
 
-            OutlinedTextField(
+            DatePickerField(
                 value = dueDate,
-                onValueChange = { dueDate = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Due Date (YYYY-MM-DD)") },
-                placeholder = { Text("e.g. 2026-09-15") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null
-                    )
+                onValueChange = {
+                    dueDate = it
+                    dueDateError = null
                 },
-                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                label = "Due Date",
+                isError = dueDateError != null,
+                supportingText = dueDateError?.let { { Text(it) } },
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
@@ -591,6 +667,22 @@ fun ManagerEditFarmActivityScreen(
                 onClick = {
                     if (isSaving) return@Button
 
+                    val today = try { LocalDate.now() } catch (_: Exception) { null }
+                    val dueParsed = try { LocalDate.parse(dueDate.trim()) } catch (_: Exception) { null }
+
+                    if (dueParsed != null && today != null && dueParsed.isBefore(today)) {
+                        dueDateError = "Due date cannot be in the past."
+                        return@Button
+                    }
+
+                    if (isPlantingType && expectedHarvestDateText.isNotBlank()) {
+                        val hParsed = try { LocalDate.parse(expectedHarvestDateText.trim()) } catch (_: Exception) { null }
+                        if (hParsed != null && today != null && hParsed.isBefore(today)) {
+                            harvestDateError = "Expected harvest date cannot be in the past."
+                            return@Button
+                        }
+                    }
+
                     val finalType = activityType.ifBlank { "Planting" }
                     val finalName = activityNameText.trim().ifBlank { null }
                     val finalDate = dueDate.ifBlank { todayDateStr }
@@ -613,6 +705,8 @@ fun ManagerEditFarmActivityScreen(
                         finalDate,
                         finalNotes,
                         assignedRole,
+                        selectedWorkerProfileId,
+                        selectedSupervisorProfileId,
                         targetDivisionId,
                         parsedQuantity,
                         parsedUnit,

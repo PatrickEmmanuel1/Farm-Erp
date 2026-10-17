@@ -1,5 +1,7 @@
 package com.example.farmproject.ui.reports.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,12 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -50,7 +51,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ManagerGenerateReportScreen(
     onBackClick: () -> Unit = {},
-    onGenerateClick: () -> Unit = {}
+    onGenerateClick: (reportType: String) -> Unit = {}
 ) {
 
     var reportType by remember { mutableStateOf("") }
@@ -98,7 +99,7 @@ fun ManagerGenerateReportScreen(
                     onClick = onBackClick
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -205,36 +206,20 @@ fun ManagerGenerateReportScreen(
                 title = "Date Range"
             )
 
-            OutlinedTextField(
+            DatePickerField(
                 value = startDate,
                 onValueChange = { startDate = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Start Date") },
-                placeholder = { Text("DD/MM/YYYY") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null
-                    )
-                },
-                singleLine = true,
+                label = "Start Date",
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
 
-            OutlinedTextField(
+            DatePickerField(
                 value = endDate,
                 onValueChange = { endDate = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("End Date") },
-                placeholder = { Text("DD/MM/YYYY") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = null
-                    )
-                },
-                singleLine = true,
+                label = "End Date",
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
@@ -306,7 +291,7 @@ fun ManagerGenerateReportScreen(
             // ---------------------------------------------------------
 
             SectionTitle(
-                icon = Icons.Default.Notes,
+                icon = Icons.AutoMirrored.Filled.Notes,
                 title = "Additional Information"
             )
 
@@ -322,7 +307,7 @@ fun ManagerGenerateReportScreen(
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Notes,
+                        imageVector = Icons.AutoMirrored.Filled.Notes,
                         contentDescription = null
                     )
                 },
@@ -339,7 +324,8 @@ fun ManagerGenerateReportScreen(
 
             Button(
                 onClick = {
-                    onGenerateClick()
+                    val targetType = reportType.ifBlank { "Crop Yield Report" }
+                    onGenerateClick(targetType)
                 },
                 modifier = Modifier
                     .fillMaxWidth()

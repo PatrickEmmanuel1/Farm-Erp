@@ -9,7 +9,9 @@ import com.example.farmproject.data.repository.FarmActivityRepository
 import com.example.farmproject.data.repository.FarmRepository
 import com.example.farmproject.data.repository.InventoryRepository
 import com.example.farmproject.data.repository.MachineryRepository
+import com.example.farmproject.data.repository.StorageRepository
 import com.example.farmproject.data.session.CurrentSession
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,7 @@ sealed interface DashboardUiState {
         val totalWorkers: Int,
         val totalInventory: Int,
         val totalMachinery: Int,
+        val totalStorage: Int = 0,
         val recentActivities: List<String>
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
@@ -41,7 +44,8 @@ class DashboardViewModel(
     private val employeeRepository: EmployeeRepository = EmployeeRepository(),
     private val farmActivityRepository: FarmActivityRepository = FarmActivityRepository(),
     private val inventoryRepository: InventoryRepository = InventoryRepository(),
-    private val machineryRepository: MachineryRepository = MachineryRepository()
+    private val machineryRepository: MachineryRepository = MachineryRepository(),
+    private val storageRepository: StorageRepository = StorageRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
@@ -52,7 +56,7 @@ class DashboardViewModel(
     }
 
     fun loadDashboardData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = DashboardUiState.Loading
             try {
                 val userId = CurrentSession.userId ?: ""
@@ -73,6 +77,7 @@ class DashboardViewModel(
                     val supervisorsDeferred = async { employeeRepository.getSupervisorsForFarm(farmId) }
                     val inventoryDeferred = async { inventoryRepository.getInventoryForFarm(farmId) }
                     val machineryDeferred = async { machineryRepository.getMachineryForFarm(farmId) }
+                    val storageDeferred = async { storageRepository.getStorageForFarm(farmId) }
                     val activitiesDeferred = async { farmActivityRepository.getFarmActivitiesForFarm(farmId) }
 
                     val divisions = divisionsDeferred.await()
@@ -82,6 +87,7 @@ class DashboardViewModel(
                     val supervisors = supervisorsDeferred.await()
                     val inventory = inventoryDeferred.await()
                     val machinery = machineryDeferred.await()
+                    val storage = storageDeferred.await()
                     val activities = activitiesDeferred.await()
 
                     val farmName = farm?.name?.ifBlank { null } ?: "Mountain View Farm"
@@ -93,6 +99,7 @@ class DashboardViewModel(
                     val totalEmployeesCount = workers.size + supervisors.size
                     val inventoryCount = inventory.size
                     val machineryCount = machinery.size
+                    val storageCount = storage.size
                     val pendingCount = activities.count { display ->
                         val st = display.activity.safeStatus
                         val isInProgress = st.equals("In Progress", ignoreCase = true) ||
@@ -139,6 +146,7 @@ class DashboardViewModel(
                         totalWorkers = totalEmployeesCount,
                         totalInventory = inventoryCount,
                         totalMachinery = machineryCount,
+                        totalStorage = storageCount,
                         recentActivities = if (rawActivities.isEmpty()) defaultActivities else rawActivities
                     )
                 }

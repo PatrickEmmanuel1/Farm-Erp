@@ -1,6 +1,9 @@
 package com.example.farmproject.ui.machinery.manager
 
+import com.example.farmproject.ui.common.DatePickerField
+
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,12 +65,15 @@ fun ManagerMachineryDetailsScreen(
     status: String = "Available",
     condition: String = "Good",
     location: String = "Not set",
+    purchaseDate: String = "",
+    purchaseCost: String = "",
+    rawPurchaseCost: String = "",
     totalHoursUsed: String = "0 hrs",
     totalFuelUsed: String = "0 litres",
     lastMaintenance: String = "No maintenance recorded",
     nextMaintenance: String = "Not scheduled",
     onBackClick: () -> Unit = {},
-    onEditClick: () -> Unit = {},
+    onEditSave: (name: String, purchaseDate: String?, purchaseCost: Double?) -> Unit = { _, _, _ -> },
     onDeleteClick: () -> Unit = {},
     onUsageHistoryClick: () -> Unit = {},
     onMaintenanceHistoryClick: () -> Unit = {},
@@ -75,6 +81,7 @@ fun ManagerMachineryDetailsScreen(
 ) {
     var showRecordUsageDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -94,7 +101,7 @@ fun ManagerMachineryDetailsScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onEditClick) {
+                    IconButton(onClick = { showEditDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit machinery"
@@ -120,8 +127,6 @@ fun ManagerMachineryDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(8.dp))
-
                 MachineryHeaderCard(
                     name = machineName,
                     type = machineType,
@@ -138,7 +143,9 @@ fun ManagerMachineryDetailsScreen(
                     totalHoursUsed = totalHoursUsed,
                     totalFuelUsed = totalFuelUsed,
                     condition = condition,
-                    location = location
+                    location = location,
+                    purchaseDate = purchaseDate,
+                    purchaseCost = purchaseCost
                 )
             }
 
@@ -190,6 +197,19 @@ fun ManagerMachineryDetailsScreen(
         }
     }
 
+    if (showEditDialog) {
+        EditMachineryDialog(
+            currentName = machineName,
+            currentPurchaseDate = purchaseDate,
+            currentPurchaseCost = rawPurchaseCost,
+            onDismiss = { showEditDialog = false },
+            onSave = { name, pDate, pCost ->
+                onEditSave(name, pDate, pCost)
+                showEditDialog = false
+            }
+        )
+    }
+
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
@@ -226,6 +246,110 @@ fun ManagerMachineryDetailsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun EditMachineryDialog(
+    currentName: String,
+    currentPurchaseDate: String,
+    currentPurchaseCost: String,
+    onDismiss: () -> Unit,
+    onSave: (name: String, purchaseDate: String?, purchaseCost: Double?) -> Unit
+) {
+    var nameText by remember { mutableStateOf(currentName) }
+    var dateText by remember { mutableStateOf(currentPurchaseDate) }
+    var costText by remember { mutableStateOf(currentPurchaseCost) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Edit Machinery Details",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = nameText,
+                    onValueChange = {
+                        nameText = it
+                        errorMsg = null
+                    },
+                    label = { Text("Name *") },
+                    placeholder = { Text("e.g. Massey Ferguson 375") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                DatePickerField(
+                    value = dateText,
+                    onValueChange = {
+                        dateText = it
+                        errorMsg = null
+                    },
+                    label = "Purchase Date",
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = costText,
+                    onValueChange = { input ->
+                        if (input.all { c -> c.isDigit() || c == '.' }) {
+                            costText = input
+                            errorMsg = null
+                        }
+                    },
+                    label = { Text("Purchase Cost (KES)") },
+                    placeholder = { Text("e.g. 3500000.00") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                errorMsg?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (nameText.isBlank()) {
+                        errorMsg = "Please enter machinery name."
+                        return@Button
+                    }
+                    val today = try { LocalDate.now() } catch (_: Exception) { null }
+                    val dParsed = if (dateText.isNotBlank()) try { LocalDate.parse(dateText.trim()) } catch (_: Exception) { null } else null
+
+                    if (dParsed != null && today != null && dParsed.isBefore(today)) {
+                        errorMsg = "Purchase date cannot be in the past."
+                        return@Button
+                    }
+
+                    onSave(
+                        nameText.trim(),
+                        dateText.trim().ifBlank { null },
+                        costText.toDoubleOrNull()
+                    )
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -274,13 +398,10 @@ private fun RecordUsageDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
+                DatePickerField(
                     value = dateText,
                     onValueChange = { dateText = it },
-                    label = { Text("Usage Date (YYYY-MM-DD)") },
-                    placeholder = { Text("e.g. 2026-03-30") },
-                    leadingIcon = { Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null) },
-                    singleLine = true,
+                    label = "Usage Date",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -305,18 +426,23 @@ private fun RecordUsageDialog(
             Button(
                 onClick = {
                     val hrs = hoursText.toDoubleOrNull()
-                    if (hrs == null || hrs <= 0.0) {
-                        errorMsg = "Enter valid operating hours."
-                    } else {
-                        val fuel = fuelText.toDoubleOrNull()
-                        val finalDate = dateText.trim().ifBlank {
-                            try {
-                                LocalDate.now().toString()
-                            } catch (_: Exception) {
-                                "2026-03-30"
+                    val fuel = fuelText.toDoubleOrNull()
+                    val dateParsed = if (dateText.isNotBlank()) try { LocalDate.parse(dateText.trim()) } catch (_: Exception) { null } else null
+                    val today = try { LocalDate.now() } catch (_: Exception) { null }
+
+                    when {
+                        hrs == null || hrs <= 0.0 -> errorMsg = "Please enter valid hours used."
+                        dateParsed != null && today != null && dateParsed.isBefore(today) -> errorMsg = "Usage date cannot be in the past."
+                        else -> {
+                            val finalDate = dateText.trim().ifBlank {
+                                try {
+                                    LocalDate.now().toString()
+                                } catch (_: Exception) {
+                                    "2026-03-30"
+                                }
                             }
+                            onRecord(hrs, fuel, finalDate, notesText.trim().ifBlank { null })
                         }
-                        onRecord(hrs, fuel, finalDate, notesText.trim().ifBlank { null })
                     }
                 }
             ) {
@@ -408,7 +534,9 @@ private fun OverviewCard(
     totalHoursUsed: String,
     totalFuelUsed: String,
     condition: String,
-    location: String
+    location: String,
+    purchaseDate: String,
+    purchaseCost: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -444,10 +572,26 @@ private fun OverviewCard(
                 )
             }
 
-            MaintenanceRow(
-                label = "Location",
-                value = location
-            )
+            if (location.isNotBlank()) {
+                MaintenanceRow(
+                    label = "Location",
+                    value = location
+                )
+            }
+
+            if (purchaseDate.isNotBlank()) {
+                MaintenanceRow(
+                    label = "Purchase Date",
+                    value = purchaseDate
+                )
+            }
+
+            if (purchaseCost.isNotBlank()) {
+                MaintenanceRow(
+                    label = "Purchase Cost",
+                    value = purchaseCost
+                )
+            }
         }
     }
 }
@@ -469,14 +613,14 @@ private fun MachineryMetric(
         Spacer(modifier = Modifier.height(5.dp))
 
         Text(
-            text = value,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium
+            text = label,
+            style = MaterialTheme.typography.labelSmall
         )
 
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -493,16 +637,17 @@ private fun MaintenanceCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             MaintenanceRow(
-                label = "Last maintenance",
+                label = "Last maintenance date",
                 value = lastMaintenance
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
             MaintenanceRow(
-                label = "Next maintenance",
+                label = "Next scheduled maintenance",
                 value = nextMaintenance
             )
         }
@@ -516,17 +661,18 @@ private fun MaintenanceRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodySmall
         )
 
         Text(
             text = value,
-            fontWeight = FontWeight.Medium,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -539,8 +685,9 @@ private fun ActionCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -554,7 +701,7 @@ private fun ActionCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(42.dp)
                     .background(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(12.dp)
@@ -568,13 +715,13 @@ private fun ActionCard(
                 )
             }
 
-            Spacer(modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold
                 )
 
                 Text(
@@ -587,9 +734,7 @@ private fun ActionCard(
 }
 
 @Composable
-private fun SectionTitle(
-    title: String
-) {
+private fun SectionTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,

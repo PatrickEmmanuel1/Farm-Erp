@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <path
+        android:fillColor="#FBE9E7"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Smokestack -->
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M100,130h30a10,10 0 0 1 10,10v70h-50v-70a10,10 0 0 1 10,-10z"/>
+    <!-- Cabin & Hood -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,220h170v100h-150a20,20 0 0 1 -20,-20z M230,150h110a30,30 0 0 1 30,30l30,140h-170z"/>
+    <!-- Cabin Window -->
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M260,180h60l20,70h-80z"/>
+    <!-- Front Wheel -->
+    <path android:fillColor="#FFFFFF" android:pathData="M140,370a50,50 0 1,0 0,-100a50,50 0 1,0 0,100Z"/>
+    <path android:fillColor="#E64A19" android:pathData="M140,345a25,25 0 1,0 0,-50a25,25 0 1,0 0,50Z"/>
+    <!-- Big Rear Wheel -->
+    <path android:fillColor="#FFFFFF" android:pathData="M340,390a80,80 0 1,0 0,-160a80,80 0 1,0 0,160Z"/>
+    <path android:fillColor="#E64A19" android:pathData="M340,350a40,40 0 1,0 0,-80a40,40 0 1,0 0,80Z"/>
+</vector>

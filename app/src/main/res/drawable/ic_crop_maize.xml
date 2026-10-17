@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <!-- Background -->
+    <path
+        android:fillColor="#FFF8E1"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Green stem -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2E7D32"
+        android:strokeWidth="16"
+        android:strokeLineCap="round"
+        android:pathData="M250,300v120"/>
+    <!-- Left Leaf -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M250,380C170,380 120,290 130,200C180,240 230,310 250,380Z"/>
+    <!-- Right Leaf -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M250,380C330,380 380,290 370,200C320,240 270,310 250,380Z"/>
+    <!-- Yellow Cob Body -->
+    <path
+        android:fillColor="#FFA000"
+        android:pathData="M250,80C200,80 170,140 170,220C170,280 200,310 250,310C300,310 330,280 330,220C330,140 300,80 250,80Z"/>
+    <!-- Yellow Kernels -->
+    <path android:fillColor="#FFCA28" android:pathData="M210,120a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M250,120a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M290,120a12,12 0 1,0 24,0a12,12 0 1,0 -24,0"/>
+    <path android:fillColor="#FFCA28" android:pathData="M210,160a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M250,160a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M290,160a12,12 0 1,0 24,0a12,12 0 1,0 -24,0"/>
+    <path android:fillColor="#FFCA28" android:pathData="M210,200a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M250,200a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M290,200a12,12 0 1,0 24,0a12,12 0 1,0 -24,0"/>
+    <path android:fillColor="#FFCA28" android:pathData="M210,240a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M250,240a12,12 0 1,0 24,0a12,12 0 1,0 -24,0 M290,240a12,12 0 1,0 24,0a12,12 0 1,0 -24,0"/>
+</vector>

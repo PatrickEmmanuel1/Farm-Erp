@@ -1,5 +1,8 @@
+@file:Suppress("unused")
+
 package com.example.farmproject.data.repository
 
+import com.example.farmproject.data.model.Division
 import com.example.farmproject.data.model.Fertilizer
 import com.example.farmproject.data.model.Fungicide
 import com.example.farmproject.data.model.Herbicide
@@ -12,7 +15,9 @@ import com.example.farmproject.data.model.Water
 import com.example.farmproject.data.model.toInventoryItem
 import com.example.farmproject.data.remote.SupabaseClientProvider
 import com.example.farmproject.data.session.CurrentSession
+
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.async
@@ -23,6 +28,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.time.LocalDate
 import java.util.UUID
 
 class InventoryRepository(
@@ -30,9 +36,7 @@ class InventoryRepository(
 ) {
 
     /**
-     * Every active item across all six category tables for one farm,
-     * mapped into the flat shape ManagerInventoryScreen renders. Runs
-     * the six table queries concurrently rather than one after another.
+     * Every active item across all six category tables for one farm.
      */
     suspend fun getInventoryForFarm(farmId: String): List<InventoryItem> = coroutineScope {
         val fertilizers = async { getFertilizers(farmId) }
@@ -267,112 +271,101 @@ class InventoryRepository(
     }
 
     // ---------------------------------------------------------------
-    // Stock Issuances (Per-category and Global tables)
+    // Stock Issuances
     // ---------------------------------------------------------------
 
     suspend fun issueStockItem(
         category: InventoryCategory,
         itemId: String,
         quantityIssued: Double,
-        issuedTo: String,
+        divisionId: String? = null,
+        issuedTo: String? = null,
         issueDate: String,
-        notes: String?
+        notes: String? = null
     ): Result<Unit> {
         return try {
             val farmId = CurrentSession.ensureFarmId(client)
-
-            val table = when (category) {
-                InventoryCategory.FERTILIZER -> "fertilizers"
-                InventoryCategory.HERBICIDE -> "herbicide"
-                InventoryCategory.PESTICIDE -> "pesticide"
-                InventoryCategory.FUNGICIDE -> "fungicide"
-                InventoryCategory.INSECTICIDE -> "insecticide"
-                InventoryCategory.WATER -> "water"
-            }
-            val idColumn = when (category) {
-                InventoryCategory.FERTILIZER -> "fertilizer_id"
-                InventoryCategory.HERBICIDE -> "herbicide_id"
-                InventoryCategory.PESTICIDE -> "pesticide_id"
-                InventoryCategory.FUNGICIDE -> "fungicide_id"
-                InventoryCategory.INSECTICIDE -> "insecticide_id"
-                InventoryCategory.WATER -> "water_id"
-            }
+            val authUserId = client.auth.currentUserOrNull()?.id ?: CurrentSession.userId ?: ""
+            val issuedBy = authUserId.ifBlank { UUID.randomUUID().toString() }
 
             // 1. Fetch current item details
             val items = getInventoryForFarm(farmId)
             val item = items.find { it.id == itemId }
+            val unit = item?.unit ?: "units"
 
             // 2. Update stock quantity in category table
             if (item != null) {
                 val newQuantity = (item.quantity - quantityIssued).coerceAtLeast(0.0)
                 try {
-                    val updateMap = if (category == InventoryCategory.WATER) {
-                        mapOf("available_quantity" to newQuantity)
-                    } else {
-                        mapOf("quantity" to newQuantity)
-                    }
-                    client.from(table).update(updateMap) {
-                        filter { eq(idColumn, itemId) }
+                    when (category) {
+                        InventoryCategory.FERTILIZER -> client.from("fertilizers").update(mapOf("quantity" to newQuantity)) { filter { eq("fertilizer_id", itemId) } }
+                        InventoryCategory.HERBICIDE -> client.from("herbicide").update(mapOf("quantity" to newQuantity)) { filter { eq("herbicide_id", itemId) } }
+                        InventoryCategory.PESTICIDE -> client.from("pesticide").update(mapOf("quantity" to newQuantity)) { filter { eq("pesticide_id", itemId) } }
+                        InventoryCategory.FUNGICIDE -> client.from("fungicide").update(mapOf("quantity" to newQuantity)) { filter { eq("fungicide_id", itemId) } }
+                        InventoryCategory.INSECTICIDE -> client.from("insecticide").update(mapOf("quantity" to newQuantity)) { filter { eq("insecticide_id", itemId) } }
+                        InventoryCategory.WATER -> client.from("water").update(mapOf("available_quantity" to newQuantity)) { filter { eq("water_id", itemId) } }
                     }
                 } catch (_: Exception) {}
             }
 
-            // 3. Insert record into category-specific issuance table and global stock_issuance
-            val issuanceId = UUID.randomUUID().toString()
-            val itemName = item?.name ?: "Stock Item"
-            val itemUnit = item?.unit ?: "units"
-            val dateStr = issueDate.trim().ifBlank { "2026-03-30" }
-
-            val categoryTables = when (category) {
-                InventoryCategory.FERTILIZER -> listOf("fertilizer_issuance", "fertilizers_issuance", "stock_issuance")
-                InventoryCategory.HERBICIDE -> listOf("herbicide_issuance", "herbicides_issuance", "stock_issuance")
-                InventoryCategory.PESTICIDE -> listOf("pesticide_issuance", "pesticides_issuance", "stock_issuance")
-                InventoryCategory.FUNGICIDE -> listOf("fungicide_issuance", "fungicides_issuance", "stock_issuance")
-                InventoryCategory.INSECTICIDE -> listOf("insecticide_issuance", "insecticides_issuance", "stock_issuance")
-                InventoryCategory.WATER -> listOf("water_issuance", "waters_issuance", "stock_issuance")
+            // 3. Insert record into exact category issuance table
+            val dateStr = issueDate.trim().ifBlank {
+                try { LocalDate.now().toString() } catch (_: Exception) { "2026-03-30" }
             }
 
-            val payloadWithFarm = buildJsonObject {
-                put("issuance_id", issuanceId)
-                put("item_id", itemId)
-                put(idColumn, itemId)
-                put("category", category.name)
-                put("item_name", itemName)
-                put("name", itemName)
-                put("quantity_issued", quantityIssued)
-                put("quantity", quantityIssued)
-                put("unit", itemUnit)
-                put("issued_to", issuedTo)
-                put("issue_date", dateStr)
-                put("issuance_date", dateStr)
-                if (!notes.isNullOrBlank()) put("notes", notes)
-                if (farmId.isNotBlank()) put("farm_id", farmId)
-            }
+            val validDivisionId = divisionId?.takeIf { it.isNotBlank() }
+            val combinedNotes = listOfNotNull(notes?.ifBlank { null }, issuedTo?.takeIf { it.isNotBlank() }?.let { "Recipient: $it" }).joinToString(" | ")
 
-            val payloadNoFarm = buildJsonObject {
-                put("issuance_id", issuanceId)
-                put("item_id", itemId)
-                put(idColumn, itemId)
-                put("category", category.name)
-                put("item_name", itemName)
-                put("name", itemName)
-                put("quantity_issued", quantityIssued)
-                put("quantity", quantityIssued)
-                put("unit", itemUnit)
-                put("issued_to", issuedTo)
-                put("issue_date", dateStr)
-                put("issuance_date", dateStr)
-                if (!notes.isNullOrBlank()) put("notes", notes)
-            }
-
-            for (targetTable in categoryTables) {
-                try {
-                    client.from(targetTable).insert(payloadWithFarm)
-                } catch (_: Exception) {
-                    try {
-                        client.from(targetTable).insert(payloadNoFarm)
-                    } catch (_: Exception) {}
+            val payload = buildJsonObject {
+                when (category) {
+                    InventoryCategory.FERTILIZER -> put("fertilizer_id", itemId)
+                    InventoryCategory.HERBICIDE -> put("herbicide_id", itemId)
+                    InventoryCategory.PESTICIDE -> put("pesticide_id", itemId)
+                    InventoryCategory.FUNGICIDE -> put("fungicide_id", itemId)
+                    InventoryCategory.INSECTICIDE -> put("insecticide_id", itemId)
+                    InventoryCategory.WATER -> put("water_id", itemId)
                 }
+                put("farm_id", farmId)
+                if (validDivisionId != null) put("division_id", validDivisionId)
+                if (issuedBy.isNotBlank()) put("issued_by", issuedBy)
+                put("quantity_issued", quantityIssued)
+                put("unit", unit)
+                put("issuance_date", dateStr)
+                put("status", "Issued")
+                if (combinedNotes.isNotBlank()) put("notes", combinedNotes)
+            }
+
+            val issuanceTable = when (category) {
+                InventoryCategory.FERTILIZER -> "fertilizer_issuance"
+                InventoryCategory.HERBICIDE -> "herbicide_issuance"
+                InventoryCategory.PESTICIDE -> "pesticide_issuance"
+                InventoryCategory.FUNGICIDE -> "fungicide_issuance"
+                InventoryCategory.INSECTICIDE -> "insecticide_issuance"
+                InventoryCategory.WATER -> "water_issuance"
+            }
+
+            try {
+                client.from(issuanceTable).insert(payload)
+            } catch (_: Exception) {
+                // Fallback attempt without division_id if division foreign key is not present
+                val payloadNoDiv = buildJsonObject {
+                    when (category) {
+                        InventoryCategory.FERTILIZER -> put("fertilizer_id", itemId)
+                        InventoryCategory.HERBICIDE -> put("herbicide_id", itemId)
+                        InventoryCategory.PESTICIDE -> put("pesticide_id", itemId)
+                        InventoryCategory.FUNGICIDE -> put("fungicide_id", itemId)
+                        InventoryCategory.INSECTICIDE -> put("insecticide_id", itemId)
+                        InventoryCategory.WATER -> put("water_id", itemId)
+                    }
+                    put("farm_id", farmId)
+                    if (issuedBy.isNotBlank()) put("issued_by", issuedBy)
+                    put("quantity_issued", quantityIssued)
+                    put("unit", unit)
+                    put("issuance_date", dateStr)
+                    put("status", "Issued")
+                    if (combinedNotes.isNotBlank()) put("notes", combinedNotes)
+                }
+                client.from(issuanceTable).insert(payloadNoDiv)
             }
 
             Result.success(Unit)
@@ -384,8 +377,27 @@ class InventoryRepository(
     private suspend fun fetchIssuancesFromTable(
         tableName: String,
         category: InventoryCategory,
-        farmId: String
+        farmId: String,
+        divisions: List<Division>,
+        items: List<InventoryItem>
     ): List<StockIssuance> {
+        val pkColumn = when (category) {
+            InventoryCategory.FERTILIZER -> "fertilizer_issuance_id"
+            InventoryCategory.HERBICIDE -> "herbicide_issuance_id"
+            InventoryCategory.PESTICIDE -> "pesticide_issuance_id"
+            InventoryCategory.FUNGICIDE -> "fungicide_issuance_id"
+            InventoryCategory.INSECTICIDE -> "insecticide_issuance_id"
+            InventoryCategory.WATER -> "water_issuance_id"
+        }
+        val productFkColumn = when (category) {
+            InventoryCategory.FERTILIZER -> "fertilizer_id"
+            InventoryCategory.HERBICIDE -> "herbicide_id"
+            InventoryCategory.PESTICIDE -> "pesticide_id"
+            InventoryCategory.FUNGICIDE -> "fungicide_id"
+            InventoryCategory.INSECTICIDE -> "insecticide_id"
+            InventoryCategory.WATER -> "water_id"
+        }
+
         return try {
             val rawList = try {
                 client.from(tableName)
@@ -399,40 +411,44 @@ class InventoryRepository(
                 client.from(tableName).select().decodeList<JsonObject>()
             }
 
-            val idColumn = when (category) {
-                InventoryCategory.FERTILIZER -> "fertilizer_id"
-                InventoryCategory.HERBICIDE -> "herbicide_id"
-                InventoryCategory.PESTICIDE -> "pesticide_id"
-                InventoryCategory.FUNGICIDE -> "fungicide_id"
-                InventoryCategory.INSECTICIDE -> "insecticide_id"
-                InventoryCategory.WATER -> "water_id"
-            }
-
             rawList.mapNotNull { json ->
                 try {
-                    val issuanceId = json["issuance_id"]?.jsonPrimitive?.contentOrNull
+                    val issuanceId = json[pkColumn]?.jsonPrimitive?.contentOrNull
+                        ?: json["issuance_id"]?.jsonPrimitive?.contentOrNull
                         ?: json["id"]?.jsonPrimitive?.contentOrNull
                         ?: UUID.randomUUID().toString()
 
-                    val itemId = json["item_id"]?.jsonPrimitive?.contentOrNull
-                        ?: json[idColumn]?.jsonPrimitive?.contentOrNull
+                    val itemId = json[productFkColumn]?.jsonPrimitive?.contentOrNull
+                        ?: json["item_id"]?.jsonPrimitive?.contentOrNull
                         ?: ""
 
-                    val itemName = json["item_name"]?.jsonPrimitive?.contentOrNull
+                    val itemObj = items.find { it.id == itemId }
+                    val itemName = itemObj?.name
+                        ?: json["item_name"]?.jsonPrimitive?.contentOrNull
                         ?: json["name"]?.jsonPrimitive?.contentOrNull
-                        ?: "Stock Item"
+                        ?: "${category.displayName} Item"
 
                     val qty = json["quantity_issued"]?.jsonPrimitive?.doubleOrNull
                         ?: json["quantity"]?.jsonPrimitive?.doubleOrNull
                         ?: 0.0
 
-                    val unit = json["unit"]?.jsonPrimitive?.contentOrNull ?: "units"
-                    val issuedTo = json["issued_to"]?.jsonPrimitive?.contentOrNull ?: "Field"
-                    val issueDate = json["issue_date"]?.jsonPrimitive?.contentOrNull
-                        ?: json["issuance_date"]?.jsonPrimitive?.contentOrNull
+                    val unit = json["unit"]?.jsonPrimitive?.contentOrNull ?: itemObj?.unit ?: "units"
+                    val divisionId = json["division_id"]?.jsonPrimitive?.contentOrNull
+                    val divObj = divisions.find { it.divisionId == divisionId }
+                    val divisionName = divObj?.name
+
+                    val issuedBy = json["issued_by"]?.jsonPrimitive?.contentOrNull
+                    val issueDate = json["issuance_date"]?.jsonPrimitive?.contentOrNull
+                        ?: json["issue_date"]?.jsonPrimitive?.contentOrNull
                         ?: "2026-03-30"
 
                     val notes = json["notes"]?.jsonPrimitive?.contentOrNull
+                    val status = json["status"]?.jsonPrimitive?.contentOrNull ?: "Issued"
+
+                    val recipientFromNotes = notes?.let {
+                        if (it.contains("Recipient: ")) it.substringAfter("Recipient: ").substringBefore(" |") else null
+                    }
+                    val issuedTo = divisionName ?: recipientFromNotes ?: "General Field"
 
                     StockIssuance(
                         issuanceId = issuanceId,
@@ -442,9 +458,13 @@ class InventoryRepository(
                         quantityIssued = qty,
                         unit = unit,
                         issuedTo = issuedTo,
+                        issuedBy = issuedBy,
+                        divisionId = divisionId,
+                        divisionName = divisionName,
                         issueDate = issueDate,
                         notes = notes,
-                        farmId = farmId
+                        farmId = farmId,
+                        status = status
                     )
                 } catch (_: Exception) {
                     null
@@ -455,19 +475,22 @@ class InventoryRepository(
         }
     }
 
-    suspend fun getStockIssuancesForFarm(farmId: String): List<StockIssuance> = coroutineScope {
+    suspend fun getStockIssuancesForFarm(
+        farmId: String,
+        divisions: List<Division> = emptyList(),
+        items: List<InventoryItem> = emptyList()
+    ): List<StockIssuance> = coroutineScope {
         val validFarmId = if (farmId.isNotBlank()) farmId else CurrentSession.ensureFarmId(client)
 
-        val fertList = async { fetchIssuancesFromTable("fertilizer_issuance", InventoryCategory.FERTILIZER, validFarmId) }
-        val herbList = async { fetchIssuancesFromTable("herbicide_issuance", InventoryCategory.HERBICIDE, validFarmId) }
-        val pestList = async { fetchIssuancesFromTable("pesticide_issuance", InventoryCategory.PESTICIDE, validFarmId) }
-        val fungList = async { fetchIssuancesFromTable("fungicide_issuance", InventoryCategory.FUNGICIDE, validFarmId) }
-        val insecList = async { fetchIssuancesFromTable("insecticide_issuance", InventoryCategory.INSECTICIDE, validFarmId) }
-        val waterList = async { fetchIssuancesFromTable("water_issuance", InventoryCategory.WATER, validFarmId) }
-        val globalList = async { fetchIssuancesFromTable("stock_issuance", InventoryCategory.FERTILIZER, validFarmId) }
+        val fertList = async { fetchIssuancesFromTable("fertilizer_issuance", InventoryCategory.FERTILIZER, validFarmId, divisions, items) }
+        val herbList = async { fetchIssuancesFromTable("herbicide_issuance", InventoryCategory.HERBICIDE, validFarmId, divisions, items) }
+        val pestList = async { fetchIssuancesFromTable("pesticide_issuance", InventoryCategory.PESTICIDE, validFarmId, divisions, items) }
+        val fungList = async { fetchIssuancesFromTable("fungicide_issuance", InventoryCategory.FUNGICIDE, validFarmId, divisions, items) }
+        val insecList = async { fetchIssuancesFromTable("insecticide_issuance", InventoryCategory.INSECTICIDE, validFarmId, divisions, items) }
+        val waterList = async { fetchIssuancesFromTable("water_issuance", InventoryCategory.WATER, validFarmId, divisions, items) }
 
         val combined = fertList.await() + herbList.await() + pestList.await() +
-                fungList.await() + insecList.await() + waterList.await() + globalList.await()
+                fungList.await() + insecList.await() + waterList.await()
 
         combined.distinctBy { it.safeIssuanceId }
     }

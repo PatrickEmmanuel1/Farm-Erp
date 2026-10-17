@@ -1,5 +1,10 @@
 package com.example.farmproject.ui.employees.manager
 
+import android.app.Activity
+import android.content.Intent
+import android.provider.ContactsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,8 +22,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
@@ -27,15 +33,19 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,16 +54,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+
+private const val MIN_PASSWORD_LENGTH = 8
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,9 +77,17 @@ fun ManagerAddWorkerScreen(
         phoneNumber: String?,
         employeeNumber: String?,
         password: String
-    ) -> Unit = { _, _, _, _, _ -> }
+    ) -> Unit = { name, mail, phone, empNum, pass ->
+        viewModel.addWorker(name, mail, phone, empNum, pass)
+    }
 ) {
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
+    val isSaving = saveState is EmployeeSaveState.Saving
+    val serverError = (saveState as? EmployeeSaveState.Error)?.message
+
+    LaunchedEffect(Unit) {
+        viewModel.resetSaveState()
+    }
 
     LaunchedEffect(saveState) {
         if (saveState is EmployeeSaveState.Saved) {
@@ -88,6 +107,47 @@ fun ManagerAddWorkerScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val contactUri = result.data?.data
+            if (contactUri != null) {
+                try {
+                    val cursor = context.contentResolver.query(
+                        contactUri,
+                        arrayOf(
+                            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                            ContactsContract.CommonDataKinds.Phone.NUMBER
+                        ),
+                        null,
+                        null,
+                        null
+                    )
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                            val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+
+                            val name = if (nameIdx >= 0) it.getString(nameIdx).orEmpty() else ""
+                            val num = if (numIdx >= 0) it.getString(numIdx).orEmpty() else ""
+
+                            if (name.isNotBlank()) {
+                                fullName = name
+                                fullNameError = null
+                            }
+                            if (num.isNotBlank()) {
+                                phone = num
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Color(0xFF1565C0),
         unfocusedBorderColor = Color(0xFFBDBDBD),
@@ -105,9 +165,9 @@ fun ManagerAddWorkerScreen(
                     .padding(horizontal = 8.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBackClick) {
+                IconButton(onClick = onBackClick, enabled = !isSaving) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -146,6 +206,31 @@ fun ManagerAddWorkerScreen(
                 title = "Basic Information"
             )
 
+            // Pick from Contacts button
+            OutlinedButton(
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_PICK,
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI
+                    )
+                    contactPickerLauncher.launch(intent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ContactPhone,
+                    contentDescription = "Pick from Contacts",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Pick from Contacts",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
             OutlinedTextField(
                 value = fullName,
                 onValueChange = {
@@ -175,8 +260,8 @@ fun ManagerAddWorkerScreen(
                     emailError = null
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Email *") },
-                placeholder = { Text("e.g. peter.otieno@example.com") },
+                label = { Text("Email Address *") },
+                placeholder = { Text("e.g. peter@farm.com") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Email,
@@ -191,52 +276,12 @@ fun ManagerAddWorkerScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // Temporary Password
-            OutlinedTextField(
-                value = password,
-                onValueChange = {
-                    password = it
-                    passwordError = null
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Temporary Password *") },
-                placeholder = { Text("Set initial password for login") },
-                supportingText = {
-                    if (passwordError != null) {
-                        Text(passwordError!!)
-                    } else {
-                        Text("The worker will use this password to sign in.")
-                    }
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    TextButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Text(if (passwordVisible) "Hide" else "Show")
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                isError = passwordError != null,
-                singleLine = true,
-                colors = fieldColors,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            SectionTitle(
-                icon = Icons.Default.Badge,
-                title = "Employment Details"
-            )
-
             OutlinedTextField(
                 value = phone,
                 onValueChange = { phone = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Phone Number") },
-                placeholder = { Text("e.g. +254 734 567 890") },
+                placeholder = { Text("e.g. +254 700 000000") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Phone,
@@ -253,8 +298,8 @@ fun ManagerAddWorkerScreen(
                 value = employeeNumber,
                 onValueChange = { employeeNumber = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Employee Number (optional)") },
-                placeholder = { Text("e.g. WRK-041") },
+                label = { Text("Employee Number (Optional)") },
+                placeholder = { Text("e.g. WRK-001") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Badge,
@@ -266,37 +311,85 @@ fun ManagerAddWorkerScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            SectionTitle(
+                icon = Icons.Default.Lock,
+                title = "Account Credentials"
+            )
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    passwordError = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Initial Password *") },
+                placeholder = { Text("At least 8 characters") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Text(if (passwordVisible) "Hide" else "Show")
+                    }
+                },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                isError = passwordError != null,
+                supportingText = passwordError?.let { { Text(it) } },
+                singleLine = true,
+                colors = fieldColors,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            if (!serverError.isNullOrBlank()) {
+                Text(
+                    text = serverError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = {
-                    var isValid = true
-                    if (fullName.isBlank()) {
+                    var hasError = false
+                    val trimmedName = fullName.trim()
+                    val trimmedEmail = email.trim()
+                    val trimmedPhone = phone.trim().ifBlank { null }
+                    val trimmedEmpNum = employeeNumber.trim().ifBlank { null }
+
+                    if (trimmedName.isBlank()) {
                         fullNameError = "Please enter full name"
-                        isValid = false
+                        hasError = true
                     }
-                    if (email.isBlank()) {
-                        emailError = "Please enter email"
-                        isValid = false
+                    if (trimmedEmail.isBlank()) {
+                        emailError = "Please enter an email address"
+                        hasError = true
+                    } else if (!trimmedEmail.contains("@")) {
+                        emailError = "Please enter a valid email address"
+                        hasError = true
                     }
-                    if (password.isBlank()) {
-                        passwordError = "Please enter temporary password"
-                        isValid = false
-                    } else if (password.length < 6) {
-                        passwordError = "Password must be at least 6 characters"
-                        isValid = false
+                    if (password.length < MIN_PASSWORD_LENGTH) {
+                        passwordError = "Password must be at least $MIN_PASSWORD_LENGTH characters"
+                        hasError = true
                     }
 
-                    if (isValid) {
+                    if (!hasError) {
                         onSaveClick(
-                            fullName.trim(),
-                            email.trim(),
-                            phone.trim().ifBlank { null },
-                            employeeNumber.trim().ifBlank { null },
+                            trimmedName,
+                            trimmedEmail,
+                            trimmedPhone,
+                            trimmedEmpNum,
                             password
                         )
                     }
                 },
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
@@ -305,18 +398,30 @@ fun ManagerAddWorkerScreen(
                     containerColor = Color(0xFF1565C0)
                 )
             ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Save Worker",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Saving...",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Save Worker",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

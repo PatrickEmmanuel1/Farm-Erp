@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <!-- Background -->
+    <path
+        android:fillColor="#EFEBE9"
+        android:pathData="M100,0h300a100,100 0 0 1 100,100v300a100,100 0 0 1 -100,100h-300a100,100 0 0 1 -100,-100v-300a100,100 0 0 1 100,-100z"/>
+    <!-- Main Big Potato -->
+    <path
+        android:fillColor="#C89D7C"
+        android:pathData="M220,130C320,120 400,180 380,270C360,350 250,380 160,340C90,300 120,140 220,130Z"/>
+    <!-- Potato Spots -->
+    <path android:fillColor="#8D6E63" android:pathData="M200,180a10,14 0 1,0 20,0a10,14 0 1,0 -20,0 M290,200a12,10 0 1,0 24,0a12,10 0 1,0 -24,0 M250,270a14,10 0 1,0 28,0a14,10 0 1,0 -28,0 M170,280a10,12 0 1,0 20,0a10,12 0 1,0 -20,0"/>
+    <!-- Small Potato -->
+    <path
+        android:fillColor="#B08968"
+        android:pathData="M350,280C410,280 430,330 400,380C370,420 300,410 310,350C320,300 320,280 350,280Z"/>
+    <path android:fillColor="#8D6E63" android:pathData="M360,330a8,10 0 1,0 16,0a8,10 0 1,0 -16,0 M340,370a10,8 0 1,0 20,0a10,8 0 1,0 -20,0"/>
+</vector>

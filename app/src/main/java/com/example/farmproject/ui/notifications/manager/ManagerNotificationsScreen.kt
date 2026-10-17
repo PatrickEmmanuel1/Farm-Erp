@@ -20,14 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Agriculture
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,88 +30,40 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private data class NotificationItem(
-    val id: String,
-    val title: String,
-    val message: String,
-    val timestamp: String,
-    val category: String,
-    var isRead: Boolean = false,
-    val icon: ImageVector
-)
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.farmproject.data.model.AppNotification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagerNotificationsScreen(
+    viewModel: NotificationViewModel = viewModel(),
     onBackClick: () -> Unit = {}
 ) {
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val unreadCount by viewModel.unreadCount.collectAsStateWithLifecycle()
     var selectedFilter by remember { mutableStateOf("All") }
 
-    val notifications = remember {
-        mutableStateListOf(
-            NotificationItem(
-                id = "1",
-                title = "Pending Task Reminder",
-                message = "Maize spraying task in Division A is due today.",
-                timestamp = "10 mins ago",
-                category = "Activities",
-                isRead = false,
-                icon = Icons.Default.Assignment
-            ),
-            NotificationItem(
-                id = "2",
-                title = "Low Stock Alert",
-                message = "DAP Fertilizer stock is running low (below 10 bags).",
-                timestamp = "1 hour ago",
-                category = "Alerts",
-                isRead = false,
-                icon = Icons.Default.Warning
-            ),
-            NotificationItem(
-                id = "3",
-                title = "New Employee Registered",
-                message = "Supervisor Steve Brian was successfully added to your farm.",
-                timestamp = "3 hours ago",
-                category = "Personnel",
-                isRead = true,
-                icon = Icons.Default.Groups
-            ),
-            NotificationItem(
-                id = "4",
-                title = "Machinery Service Due",
-                message = "John Deere 5075E Tractor is scheduled for routine maintenance.",
-                timestamp = "Yesterday",
-                category = "Machinery",
-                isRead = true,
-                icon = Icons.Default.Agriculture
-            )
-        )
-    }
+    val unreadFilterLabel = if (unreadCount > 0) "Unread ($unreadCount)" else "Unread"
+    val filters = listOf("All", unreadFilterLabel, "Alerts")
 
-    val filters = listOf("All", "Unread", "Alerts", "Activities")
-
-    val filteredList = when (selectedFilter) {
-        "Unread" -> notifications.filter { !it.isRead }
-        "Alerts" -> notifications.filter { it.category == "Alerts" }
-        "Activities" -> notifications.filter { it.category == "Activities" }
-        else -> notifications
+    val filteredList = when {
+        selectedFilter.startsWith("Unread") -> items.filter { !it.isRead }
+        selectedFilter == "Alerts" -> items.filter { it.type.contains("LOW_INVENTORY", ignoreCase = true) || it.type.contains("MAINTENANCE", ignoreCase = true) }
+        else -> items
     }
 
     Scaffold(
@@ -148,17 +95,17 @@ fun ManagerNotificationsScreen(
                     )
 
                     Text(
-                        text = "Farm alerts & system updates",
+                        text = if (unreadCount > 0) "$unreadCount unread alert(s)" else "Farm alerts & system updates",
                         color = Color.White.copy(alpha = 0.85f),
                         fontSize = 12.sp
                     )
                 }
 
-                if (notifications.isNotEmpty()) {
-                    IconButton(onClick = { notifications.clear() }) {
+                if (items.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.markAllRead() }) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Clear All",
+                            imageVector = Icons.Default.DoneAll,
+                            contentDescription = "Mark All Read",
                             tint = Color.White
                         )
                     }
@@ -207,12 +154,11 @@ fun ManagerNotificationsScreen(
                 }
             } else {
                 items(filteredList) { item ->
-                    NotificationCard(
+                    AppNotificationCard(
                         item = item,
                         onClick = {
-                            val index = notifications.indexOfFirst { it.id == item.id }
-                            if (index != -1) {
-                                notifications[index] = notifications[index].copy(isRead = true)
+                            if (!item.isRead) {
+                                viewModel.markRead(item.id)
                             }
                         }
                     )
@@ -227,10 +173,16 @@ fun ManagerNotificationsScreen(
 }
 
 @Composable
-private fun NotificationCard(
-    item: NotificationItem,
+private fun AppNotificationCard(
+    item: AppNotification,
     onClick: () -> Unit
 ) {
+    val icon = when {
+        item.type.contains("INVENTORY", ignoreCase = true) -> Icons.Default.Warning
+        item.type.contains("MAINTENANCE", ignoreCase = true) -> Icons.Default.Agriculture
+        else -> Icons.Default.Notifications
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -254,7 +206,7 @@ private fun NotificationCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = item.icon,
+                    imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -275,7 +227,7 @@ private fun NotificationCard(
                     )
 
                     Text(
-                        text = item.timestamp,
+                        text = item.createdAt.take(10),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -284,7 +236,7 @@ private fun NotificationCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = item.message,
+                    text = item.body,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

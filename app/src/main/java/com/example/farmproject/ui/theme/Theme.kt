@@ -1,6 +1,5 @@
 package com.example.farmproject.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,35 +8,56 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = LeafGreenSecondary,
+    onPrimary = Color.White,
+    primaryContainer = ForestGreenPrimary,
+    onPrimaryContainer = MintGreenContainer,
+    secondary = TurquoiseMedium,
+    onSecondary = Color.White,
+    secondaryContainer = TurquoiseDark,
+    onSecondaryContainer = TurquoiseCardBackground,
+    tertiary = AmberWarning,
+    onTertiary = Color.Black,
+    background = Color(0xFF121212),
+    surface = Color(0xFF1E1E1E),
+    surfaceVariant = Color(0xFF2C2C2C),
+    onSurfaceVariant = WarmClaySurface,
+    error = WarmCoralError,
+    errorContainer = CrimsonRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = ForestGreenPrimary,
     onPrimary = Color.White,
+    primaryContainer = MintGreenContainer,
+    onPrimaryContainer = ForestGreenPrimary,
+    secondary = LeafGreenSecondary,
     onSecondary = Color.White,
+    secondaryContainer = TurquoiseCardBackground,
+    onSecondaryContainer = TurquoiseDark,
+    tertiary = HarvestGold,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    tertiaryContainer = CreamYellowContainer,
+    onTertiaryContainer = HarvestGold,
+    background = SoftEarthBackground,
+    onBackground = Color(0xFF212121),
+    surface = Color.White,
+    onSurface = Color(0xFF212121),
+    surfaceVariant = WarmClaySurface,
+    onSurfaceVariant = EarthBrown,
+    error = CrimsonRed,
+    errorContainer = LightRedContainer,
+    onError = Color.White
 )
 
 @Composable
 fun FarmProjectTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

@@ -2,6 +2,7 @@ package com.example.farmproject.ui.inventory.manager
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.farmproject.data.model.Division
 import com.example.farmproject.data.model.Fertilizer
 import com.example.farmproject.data.model.Fungicide
 import com.example.farmproject.data.model.Herbicide
@@ -11,6 +12,7 @@ import com.example.farmproject.data.model.InventoryItem
 import com.example.farmproject.data.model.Pesticide
 import com.example.farmproject.data.model.StockIssuance
 import com.example.farmproject.data.model.Water
+import com.example.farmproject.data.repository.DivisionRepository
 import com.example.farmproject.data.repository.InventoryRepository
 import com.example.farmproject.data.session.CurrentSession
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,11 +37,15 @@ sealed interface InventorySaveState {
 }
 
 class InventoryViewModel(
-    private val repository: InventoryRepository = InventoryRepository()
+    private val repository: InventoryRepository = InventoryRepository(),
+    private val divisionRepository: DivisionRepository = DivisionRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<InventoryUiState>(InventoryUiState.Loading)
     val uiState: StateFlow<InventoryUiState> = _uiState.asStateFlow()
+
+    private val _divisions = MutableStateFlow<List<Division>>(emptyList())
+    val divisions: StateFlow<List<Division>> = _divisions.asStateFlow()
 
     private val _saveState = MutableStateFlow<InventorySaveState>(InventorySaveState.Idle)
     val saveState: StateFlow<InventorySaveState> = _saveState.asStateFlow()
@@ -53,8 +59,11 @@ class InventoryViewModel(
             _uiState.value = InventoryUiState.Loading
             try {
                 val farmId = CurrentSession.farmId
+                val divisions = runCatching { divisionRepository.getDivisionsForFarm(farmId) }.getOrDefault(emptyList())
+                _divisions.value = divisions
+
                 val items = repository.getInventoryForFarm(farmId)
-                val issuances = repository.getStockIssuancesForFarm(farmId)
+                val issuances = repository.getStockIssuancesForFarm(farmId, divisions, items)
                 _uiState.value = InventoryUiState.Success(items = items, issuances = issuances)
             } catch (e: Exception) {
                 _uiState.value = InventoryUiState.Error(e.message ?: "Failed to load inventory")
@@ -66,20 +75,24 @@ class InventoryViewModel(
         category: InventoryCategory,
         itemId: String,
         quantityIssued: Double,
-        issuedTo: String,
+        divisionId: String? = null,
+        issuedTo: String? = null,
         issueDate: String,
         notes: String?
     ) {
         viewModelScope.launch {
+            _saveState.value = InventorySaveState.Saving
             try {
                 repository.issueStockItem(
                     category = category,
                     itemId = itemId,
                     quantityIssued = quantityIssued,
+                    divisionId = divisionId,
                     issuedTo = issuedTo,
                     issueDate = issueDate,
                     notes = notes
                 )
+                _saveState.value = InventorySaveState.Saved
                 loadInventory()
             } catch (e: Exception) {
                 _saveState.value = InventorySaveState.Error(e.message ?: "Failed to issue stock")

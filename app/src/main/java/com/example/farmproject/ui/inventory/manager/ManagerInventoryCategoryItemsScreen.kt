@@ -22,18 +22,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Outbox
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,14 +58,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.farmproject.data.model.Division
 import com.example.farmproject.data.model.InventoryCategory
 import com.example.farmproject.data.model.InventoryItem
 import com.example.farmproject.data.model.StockIssuance
+import com.example.farmproject.ui.common.DatePickerField
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +81,7 @@ fun ManagerInventoryCategoryItemsScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedItemForIssue by remember { mutableStateOf<InventoryItem?>(null) }
     val uiState by viewModel.uiState.collectAsState()
+    val divisions by viewModel.divisions.collectAsState()
 
     LaunchedEffect(category) {
         viewModel.loadInventory()
@@ -300,12 +305,14 @@ fun ManagerInventoryCategoryItemsScreen(
     selectedItemForIssue?.let { item ->
         IssueStockDialog(
             item = item,
+            divisions = divisions,
             onDismiss = { selectedItemForIssue = null },
-            onIssue = { quantity, issuedTo, issueDate, notes ->
+            onIssue = { quantity, divisionId, issuedTo, issueDate, notes ->
                 viewModel.issueStock(
                     category = category,
                     itemId = item.id,
                     quantityIssued = quantity,
+                    divisionId = divisionId,
                     issuedTo = issuedTo,
                     issueDate = issueDate,
                     notes = notes
@@ -553,7 +560,6 @@ private fun InventoryCategoryItemCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Issue Stock Action Button ONLY (Record Usage removed)
             Button(
                 onClick = onIssueClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -656,14 +662,18 @@ private fun StockIssuanceCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun IssueStockDialog(
     item: InventoryItem,
+    divisions: List<Division>,
     onDismiss: () -> Unit,
-    onIssue: (quantity: Double, issuedTo: String, issueDate: String, notes: String?) -> Unit
+    onIssue: (quantity: Double, divisionId: String?, issuedTo: String?, issueDate: String, notes: String?) -> Unit
 ) {
     var quantityText by remember { mutableStateOf("") }
-    var issuedToText by remember { mutableStateOf("") }
+    var selectedDivision by remember { mutableStateOf<Division?>(null) }
+    var divisionExpanded by remember { mutableStateOf(false) }
+    var customRecipientText by remember { mutableStateOf("") }
     var issueDateText by remember { mutableStateOf("") }
     var notesText by remember { mutableStateOf("") }
 
@@ -698,23 +708,61 @@ private fun IssueStockDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (divisions.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = divisionExpanded,
+                        onExpandedChange = { divisionExpanded = !divisionExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedDivision?.name ?: "Select Division (Optional)",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Division / Field") },
+                            leadingIcon = { Icon(imageVector = Icons.Default.Place, contentDescription = null) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = divisionExpanded) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = divisionExpanded,
+                            onDismissRequest = { divisionExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("None / General Farm") },
+                                onClick = {
+                                    selectedDivision = null
+                                    divisionExpanded = false
+                                }
+                            )
+                            divisions.forEach { div ->
+                                DropdownMenuItem(
+                                    text = { Text(div.name) },
+                                    onClick = {
+                                        selectedDivision = div
+                                        divisionExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
-                    value = issuedToText,
-                    onValueChange = { issuedToText = it },
-                    label = { Text("Issued To / Recipient *") },
-                    placeholder = { Text("e.g. Division A or John Mwangi") },
+                    value = customRecipientText,
+                    onValueChange = { customRecipientText = it },
+                    label = { Text("Recipient / Person (optional)") },
+                    placeholder = { Text("e.g. John Mwangi or Field Team") },
                     leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
+                DatePickerField(
                     value = issueDateText,
                     onValueChange = { issueDateText = it },
-                    label = { Text("Issue Date (YYYY-MM-DD)") },
-                    placeholder = { Text("e.g. 2026-03-30") },
-                    leadingIcon = { Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null) },
-                    singleLine = true,
+                    label = "Issue Date",
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -739,19 +787,28 @@ private fun IssueStockDialog(
             Button(
                 onClick = {
                     val qty = quantityText.toDoubleOrNull()
+                    val finalDate = issueDateText.trim().ifBlank {
+                        try {
+                            LocalDate.now().toString()
+                        } catch (_: Exception) {
+                            "2026-03-30"
+                        }
+                    }
+                    val today = try { LocalDate.now() } catch (_: Exception) { null }
+                    val dateParsed = try { LocalDate.parse(finalDate) } catch (_: Exception) { null }
+
                     when {
                         qty == null || qty <= 0.0 -> errorMsg = "Enter a valid quantity to issue."
                         qty > item.quantity -> errorMsg = "Quantity exceeds available stock (${item.quantity} ${item.unit})."
-                        issuedToText.isBlank() -> errorMsg = "Enter the recipient name or division."
+                        dateParsed != null && today != null && dateParsed.isBefore(today) -> errorMsg = "Issue date cannot be in the past."
                         else -> {
-                            val finalDate = issueDateText.trim().ifBlank {
-                                try {
-                                    LocalDate.now().toString()
-                                } catch (_: Exception) {
-                                    "2026-03-30"
-                                }
-                            }
-                            onIssue(qty, issuedToText.trim(), finalDate, notesText.trim().ifBlank { null })
+                            onIssue(
+                                qty,
+                                selectedDivision?.divisionId,
+                                customRecipientText.trim().ifBlank { selectedDivision?.name },
+                                finalDate,
+                                notesText.trim().ifBlank { null }
+                            )
                         }
                     }
                 }
