@@ -145,7 +145,7 @@ fun CreateFarmScreen(
 
                     Column {
                         Text(
-                            text = "Welcome to Farm ERP",
+                            text = "Welcome to MyFarm",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer

@@ -1,6 +1,7 @@
 package com.example.farmproject.ui.dashboard.supervisor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Assignment
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.PrecisionManufacturing
 import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +47,10 @@ import com.example.farmproject.data.session.CurrentSession
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupervisorDashboardScreen(
+    onActivitiesClick: () -> Unit = {},
+    onInventoryClick: () -> Unit = {},
+    onMachineryClick: () -> Unit = {},
+    onAttendanceClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
     val supervisorName = CurrentSession.fullName?.takeIf { it.isNotBlank() } ?: "Supervisor"
@@ -52,7 +61,7 @@ fun SupervisorDashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Farm ERP",
+                            text = "MyFarm",
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -134,7 +143,7 @@ fun SupervisorDashboardScreen(
                             )
 
                             Text(
-                                text = "Monitor workers, activities, and daily field attendance.",
+                                text = "Monitor workers, field activities, resources and machinery.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                             )
@@ -145,7 +154,7 @@ fun SupervisorDashboardScreen(
 
             item {
                 Text(
-                    text = "Quick Summary",
+                    text = "Field Operations",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -156,57 +165,52 @@ fun SupervisorDashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Card(
+                    SupervisorOperationCard(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Assignment,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Active Activities",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Text(
-                                text = "Assigned",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                        title = "Field Activities",
+                        subtitle = "View and manage tasks",
+                        icon = Icons.AutoMirrored.Filled.Assignment,
+                        iconBg = Color(0xFFE8F5E9),
+                        iconTint = Color(0xFF1B5E20),
+                        onClick = onActivitiesClick
+                    )
 
-                    Card(
+                    SupervisorOperationCard(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Team Workers",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Text(
-                                text = "Active",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                        title = "Resources",
+                        subtitle = "Inputs & requisitions",
+                        icon = Icons.Default.Inventory2,
+                        iconBg = Color(0xFFFFF8E1),
+                        iconTint = Color(0xFFF57F17),
+                        onClick = onInventoryClick
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    SupervisorOperationCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Machinery",
+                        subtitle = "Equipment & maintenance",
+                        icon = Icons.Default.PrecisionManufacturing,
+                        iconBg = Color(0xFFFBE9E7),
+                        iconTint = Color(0xFFE64A19),
+                        onClick = onMachineryClick
+                    )
+
+                    SupervisorOperationCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Attendance",
+                        subtitle = "Clock-in & daily logs",
+                        icon = Icons.Default.CalendarMonth,
+                        iconBg = Color(0xFFE3F2FD),
+                        iconTint = Color(0xFF1976D2),
+                        onClick = onAttendanceClick
+                    )
                 }
             }
 
@@ -237,6 +241,71 @@ fun SupervisorDashboardScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SupervisorOperationCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconBg: Color,
+    iconTint: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(
+                            color = iconBg,
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Color(0xFF9E9E9E),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A1D1A)
+            )
+
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                color = Color(0xFF6E7068)
+            )
         }
     }
 }

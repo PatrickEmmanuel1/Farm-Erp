@@ -167,11 +167,13 @@ fun ManagerDashboardScreen(
                 item {
                     FarmOperationsSection(
                         cropsCount = state.totalCrops,
+                        activitiesCount = state.pendingActivities,
                         workersCount = state.totalWorkers,
                         resourcesCount = state.totalInventory,
                         machineryCount = state.totalMachinery,
                         storageCount = state.totalStorage,
                         onCropsClick = onCropsClick,
+                        onActivitiesClick = onActivitiesClick,
                         onWorkersClick = onWorkersClick,
                         onInventoryClick = onInventoryClick,
                         onMachineryClick = onMachineryClick,
@@ -443,11 +445,13 @@ private fun QuickActionButton(
 @Composable
 private fun FarmOperationsSection(
     cropsCount: Int,
+    activitiesCount: Int,
     workersCount: Int,
     resourcesCount: Int,
     machineryCount: Int,
     storageCount: Int,
     onCropsClick: () -> Unit,
+    onActivitiesClick: () -> Unit,
     onWorkersClick: () -> Unit,
     onInventoryClick: () -> Unit,
     onMachineryClick: () -> Unit,
@@ -477,12 +481,12 @@ private fun FarmOperationsSection(
 
             OperationGridCard(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Group,
-                iconBg = Color(0xFFE3F2FD),
-                iconTint = Color(0xFF1976D2),
-                value = workersCount.toString(),
-                label = "Workers",
-                onClick = onWorkersClick
+                icon = Icons.AutoMirrored.Filled.FormatListBulleted,
+                iconBg = Color(0xFFE8F5E9),
+                iconTint = Color(0xFF1B5E20),
+                value = activitiesCount.toString(),
+                label = "Activities",
+                onClick = onActivitiesClick
             )
         }
 
@@ -492,6 +496,16 @@ private fun FarmOperationsSection(
         ) {
             OperationGridCard(
                 modifier = Modifier.weight(1f),
+                icon = Icons.Default.Group,
+                iconBg = Color(0xFFE3F2FD),
+                iconTint = Color(0xFF1976D2),
+                value = workersCount.toString(),
+                label = "Workers",
+                onClick = onWorkersClick
+            )
+
+            OperationGridCard(
+                modifier = Modifier.weight(1f),
                 icon = Icons.Default.Inventory2,
                 iconBg = Color(0xFFFFF8E1),
                 iconTint = Color(0xFFF57F17),
@@ -499,7 +513,12 @@ private fun FarmOperationsSection(
                 label = "Total Resources",
                 onClick = onInventoryClick
             )
+        }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             OperationGridCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.PrecisionManufacturing,
@@ -509,64 +528,16 @@ private fun FarmOperationsSection(
                 label = "Total Machinery",
                 onClick = onMachineryClick
             )
-        }
 
-        // Full Width Storage Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onStorageClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .background(
-                            color = Color(0xFFEFEBE9),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warehouse,
-                        contentDescription = null,
-                        tint = Color(0xFF5D4037),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = storageCount.toString(),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1D1A)
-                    )
-
-                    Text(
-                        text = "Storage Produce",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF6E7068)
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Color(0xFF9E9E9E)
-                )
-            }
+            OperationGridCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Warehouse,
+                iconBg = Color(0xFFEFEBE9),
+                iconTint = Color(0xFF5D4037),
+                value = storageCount.toString(),
+                label = "Storage Produce",
+                onClick = onStorageClick
+            )
         }
     }
 }

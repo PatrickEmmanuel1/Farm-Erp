@@ -51,7 +51,7 @@ fun WorkerDashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Farm ERP",
+                            text = "MyFarm",
                             fontWeight = FontWeight.Bold
                         )
                         Text(

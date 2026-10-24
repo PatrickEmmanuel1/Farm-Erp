@@ -14,17 +14,22 @@ class MachineryRepository(
     private val client: SupabaseClient = SupabaseClientProvider.client
 ) {
     suspend fun getMachineryForFarm(farmId: String): List<Machinery> {
-        return client.from("machinery")
-            .select {
-                filter {
-                    if (farmId.isNotBlank()) {
-                        eq("farm_id", farmId)
+        val targetFarmId = if (farmId.isNotBlank()) farmId else CurrentSession.ensureFarmId(client)
+        return try {
+            client.from("machinery")
+                .select {
+                    filter {
+                        if (targetFarmId.isNotBlank()) {
+                            eq("farm_id", targetFarmId)
+                        }
+                        eq("is_deleted", false)
                     }
-                    eq("is_deleted", false)
+                    order("name", Order.ASCENDING)
                 }
-                order("name", Order.ASCENDING)
-            }
-            .decodeList<Machinery>()
+                .decodeList<Machinery>()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun getMachineryById(machineryId: String): Machinery? {
@@ -84,6 +89,7 @@ class MachineryRepository(
                 }
             }
     }
+
     /** Usage history for one machine, most recent first — for a details-screen tab. */
     suspend fun getUsageHistory(machineryId: String): List<MachineryUsage> {
         return client.from("machinery_usage")

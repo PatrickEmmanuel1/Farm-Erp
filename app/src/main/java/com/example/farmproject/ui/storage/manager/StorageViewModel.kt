@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 sealed interface StorageUiState {
@@ -77,11 +78,13 @@ class StorageViewModel(
                 locationNote = locationNote?.trim()?.ifBlank { null }
             )
             val result = repository.createFacility(facility)
-            if (result.isSuccess) {
-                loadStorage()
-                onSuccess()
-            } else {
-                onError(result.exceptionOrNull()?.message ?: "Failed to create storage facility")
+            withContext(Dispatchers.Main) {
+                if (result.isSuccess) {
+                    loadStorage()
+                    onSuccess()
+                } else {
+                    onError(result.exceptionOrNull()?.message ?: "Failed to create storage facility")
+                }
             }
         }
     }
@@ -108,11 +111,13 @@ class StorageViewModel(
                 needsAttention = condition.contains("Spoiled", ignoreCase = true) || condition.contains("Poor", ignoreCase = true)
             )
             val result = repository.addStoredProduce(produce)
-            if (result.isSuccess) {
-                loadStorage()
-                onSuccess()
-            } else {
-                onError(result.exceptionOrNull()?.message ?: "Failed to record stored produce")
+            withContext(Dispatchers.Main) {
+                if (result.isSuccess) {
+                    loadStorage()
+                    onSuccess()
+                } else {
+                    onError(result.exceptionOrNull()?.message ?: "Failed to record stored produce")
+                }
             }
         }
     }

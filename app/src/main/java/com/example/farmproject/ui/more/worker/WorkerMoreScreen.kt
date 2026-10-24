@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,11 +51,18 @@ private data class WorkerMoreOption(
 @Composable
 fun WorkerMoreScreen(
     onBackClick: () -> Unit = {},
+    onChatClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
     val options = listOf(
+        WorkerMoreOption(
+            title = "Messages & Team Chat",
+            description = "Chat with team members and farm supervisor",
+            icon = Icons.Default.Forum,
+            onClick = onChatClick
+        ),
         WorkerMoreOption(
             title = "My Attendance & Clock In",
             description = "Clock in/out for today and view your attendance log",

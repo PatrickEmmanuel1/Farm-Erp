@@ -24,11 +24,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.remember
+import com.example.farmproject.data.repository.ChatRepository
 import com.example.farmproject.ui.activities.manager.FarmActivitiesUiState
 import com.example.farmproject.ui.activities.manager.FarmActivitiesViewModel
 import com.example.farmproject.ui.activities.manager.ManagerFarmActivityDetailsScreen
 import com.example.farmproject.ui.activities.worker.WorkerFarmActivitiesScreen
 import com.example.farmproject.ui.attendance.worker.WorkerAttendanceScreen
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Settings
+import com.example.farmproject.ui.chat.ChatRoutes
+import com.example.farmproject.ui.chat.chatGraph
 import com.example.farmproject.ui.dashboard.worker.WorkerDashboardScreen
 import com.example.farmproject.ui.more.worker.WorkerMoreScreen
 import com.example.farmproject.ui.notifications.manager.NotificationViewModel
@@ -48,10 +54,16 @@ private sealed class WorkerTab(
         icon = Icons.Default.Dashboard
     )
 
-    data object Activities : WorkerTab(
-        route = "worker_tab_activities",
-        title = "Activities",
-        icon = Icons.AutoMirrored.Filled.Assignment
+    data object Messages : WorkerTab(
+        route = ChatRoutes.LIST,
+        title = "Messages",
+        icon = Icons.Default.Forum
+    )
+
+    data object Settings : WorkerTab(
+        route = WorkerRoutes.SETTINGS,
+        title = "Settings",
+        icon = Icons.Default.Settings
     )
 
     data object More : WorkerTab(
@@ -65,6 +77,7 @@ private object WorkerRoutes {
     const val SETTINGS = "worker_settings"
     const val PROFILE = "worker_profile"
     const val NOTIFICATIONS = "worker_notifications"
+    const val ACTIVITIES = "worker_tab_activities"
     const val FARM_ACTIVITY_DETAILS = "worker_farm_activity_details/{activityId}"
     const val ATTENDANCE = "worker_attendance"
 }
@@ -74,10 +87,12 @@ fun WorkerNavigation(
     onLogout: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val chatRepository = remember { ChatRepository() }
 
     val tabs = listOf(
         WorkerTab.Dashboard,
-        WorkerTab.Activities,
+        WorkerTab.Messages,
+        WorkerTab.Settings,
         WorkerTab.More
     )
 
@@ -136,7 +151,7 @@ fun WorkerNavigation(
             }
 
             // 2. ACTIVITIES
-            composable(WorkerTab.Activities.route) {
+            composable(WorkerRoutes.ACTIVITIES) {
                 val viewModel: FarmActivitiesViewModel = viewModel()
                 WorkerFarmActivitiesScreen(
                     viewModel = viewModel,
@@ -197,6 +212,7 @@ fun WorkerNavigation(
             composable(WorkerTab.More.route) {
                 WorkerMoreScreen(
                     onBackClick = { navigateToTab(WorkerTab.Dashboard.route) },
+                    onChatClick = { navController.navigate(ChatRoutes.LIST) },
                     onAttendanceClick = { navController.navigate(WorkerRoutes.ATTENDANCE) },
                     onSettingsClick = { navController.navigate(WorkerRoutes.SETTINGS) },
                     onLogoutClick = onLogout
@@ -233,6 +249,8 @@ fun WorkerNavigation(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+
+            chatGraph(navController, chatRepository)
         }
     }
 }

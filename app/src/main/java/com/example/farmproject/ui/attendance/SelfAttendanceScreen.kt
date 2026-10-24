@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -135,10 +137,14 @@ fun SelfAttendanceScreen(
                                 record = todayRecord,
                                 onClockIn = { viewModel.clockInSelf() },
                                 onClockOut = {
-                                    todayRecord?.attendanceId?.let { id ->
-                                        viewModel.clockOutSelf(id)
-                                    }
-                                }
+                                    viewModel.clockOutSelf(
+                                        attendanceId = todayRecord?.attendanceId,
+                                        workerProfileId = todayRecord?.workerProfileId
+                                    )
+                                },
+                                onMarkAbsent = { viewModel.markAway("absent") },
+                                onMarkLeave = { viewModel.markAway("on_leave") },
+                                onUndoAway = { viewModel.undoAway() }
                             )
                         }
 
@@ -187,10 +193,14 @@ private fun TodayClockInCard(
     role: String,
     record: AttendanceRecord?,
     onClockIn: () -> Unit,
-    onClockOut: () -> Unit
+    onClockOut: () -> Unit,
+    onMarkAbsent: () -> Unit,
+    onMarkLeave: () -> Unit,
+    onUndoAway: () -> Unit
 ) {
     val todayDateStr = LocalDate.now().toString()
     val statusText = record?.displayStatus ?: "Not Clocked In"
+    val isAway = statusText.lowercase() == "absent" || statusText.lowercase() == "on leave"
 
     val statusBgColor = when (statusText.lowercase()) {
         "present" -> Color(0xFFE8F5E9)
@@ -289,7 +299,14 @@ private fun TodayClockInCard(
                     )
                 }
 
-                if (record?.checkIn == null) {
+                if (isAway) {
+                    Button(
+                        onClick = onUndoAway,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Clock In Instead")
+                    }
+                } else if (record?.checkIn == null) {
                     Button(
                         onClick = onClockIn,
                         shape = RoundedCornerShape(10.dp)
@@ -309,6 +326,37 @@ private fun TodayClockInCard(
                         Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Clock Out")
+                    }
+                }
+            }
+
+            if (record?.checkIn == null && !isAway) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Not working today?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedButton(
+                        onClick = onMarkAbsent,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("Absent", fontSize = 11.sp)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    OutlinedButton(
+                        onClick = onMarkLeave,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("On Leave", fontSize = 11.sp)
                     }
                 }
             }

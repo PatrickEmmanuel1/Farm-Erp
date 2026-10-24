@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notes
@@ -30,25 +29,28 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -68,38 +70,24 @@ fun ManagerAddStorageScreen(
     var cropName by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf("kg") }
-    var location by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("Main Store") }
     var dateStored by remember { mutableStateOf("") }
     var condition by remember { mutableStateOf("Good") }
     var notes by remember { mutableStateOf("") }
+
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var cropNameError by remember { mutableStateOf<String?>(null) }
+    var quantityError by remember { mutableStateOf<String?>(null) }
 
     var unitExpanded by remember { mutableStateOf(false) }
     var locationExpanded by remember { mutableStateOf(false) }
     var conditionExpanded by remember { mutableStateOf(false) }
 
-    val units = listOf(
-        "kg",
-        "g",
-        "litres",
-        "bags",
-        "crates",
-        "units"
-    )
-
-    val defaultLocations = listOf(
-        "Main Store",
-        "Warehouse 1",
-        "Cold Store A",
-        "Silo 1"
-    )
-
+    val units = listOf("kg", "g", "litres", "bags", "crates", "units")
+    val defaultLocations = listOf("Main Store", "Warehouse 1", "Cold Store A", "Silo 1")
     val locations = (facilityNames + defaultLocations).distinct()
-
-    val conditions = listOf(
-        "Good",
-        "Fair",
-        "Spoiled"
-    )
+    val conditions = listOf("Good", "Fair", "Spoiled")
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Color(0xFF1565C0),
@@ -118,10 +106,7 @@ fun ManagerAddStorageScreen(
                     .padding(horizontal = 8.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-                IconButton(
-                    onClick = onBackClick
-                ) {
+                IconButton(onClick = onBackClick) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Back",
@@ -159,10 +144,7 @@ fun ManagerAddStorageScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ---------------------------------------------------------
             // BASIC INFORMATION
-            // ---------------------------------------------------------
-
             SectionTitle(
                 icon = Icons.Default.Warehouse,
                 title = "Basic Information"
@@ -170,25 +152,27 @@ fun ManagerAddStorageScreen(
 
             OutlinedTextField(
                 value = cropName,
-                onValueChange = { cropName = it },
+                onValueChange = {
+                    cropName = it
+                    cropNameError = null
+                },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Crop / Produce Name") },
-                placeholder = { Text("e.g. Maize") },
+                label = { Text("Crop / Produce Name *") },
+                placeholder = { Text("e.g. Maize, Coffee, Beans") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Warehouse,
                         contentDescription = null
                     )
                 },
+                isError = cropNameError != null,
+                supportingText = cropNameError?.let { { Text(it) } },
                 singleLine = true,
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // ---------------------------------------------------------
             // STORAGE DETAILS
-            // ---------------------------------------------------------
-
             SectionTitle(
                 icon = Icons.Default.Numbers,
                 title = "Storage Details"
@@ -199,10 +183,11 @@ fun ManagerAddStorageScreen(
                 onValueChange = { input ->
                     if (input.all { it.isDigit() || it == '.' || it == ',' }) {
                         quantity = input
+                        quantityError = null
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Quantity") },
+                label = { Text("Quantity *") },
                 placeholder = { Text("e.g. 1200") },
                 leadingIcon = {
                     Icon(
@@ -210,6 +195,8 @@ fun ManagerAddStorageScreen(
                         contentDescription = null
                     )
                 },
+                isError = quantityError != null,
+                supportingText = quantityError?.let { { Text(it) } },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
@@ -220,11 +207,8 @@ fun ManagerAddStorageScreen(
 
             ExposedDropdownMenuBox(
                 expanded = unitExpanded,
-                onExpandedChange = {
-                    unitExpanded = !unitExpanded
-                }
+                onExpandedChange = { unitExpanded = !unitExpanded }
             ) {
-
                 OutlinedTextField(
                     value = unit,
                     onValueChange = {},
@@ -233,7 +217,6 @@ fun ManagerAddStorageScreen(
                         .fillMaxWidth()
                         .menuAnchor(),
                     label = { Text("Unit") },
-                    placeholder = { Text("Select unit") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Straighten,
@@ -241,9 +224,7 @@ fun ManagerAddStorageScreen(
                         )
                     },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = unitExpanded
-                        )
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded)
                     },
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
@@ -251,17 +232,11 @@ fun ManagerAddStorageScreen(
 
                 ExposedDropdownMenu(
                     expanded = unitExpanded,
-                    onDismissRequest = {
-                        unitExpanded = false
-                    }
+                    onDismissRequest = { unitExpanded = false }
                 ) {
-
                     units.forEach { item ->
-
                         DropdownMenuItem(
-                            text = {
-                                Text(item)
-                            },
+                            text = { Text(item) },
                             onClick = {
                                 unit = item
                                 unitExpanded = false
@@ -273,20 +248,16 @@ fun ManagerAddStorageScreen(
 
             ExposedDropdownMenuBox(
                 expanded = locationExpanded,
-                onExpandedChange = {
-                    locationExpanded = !locationExpanded
-                }
+                onExpandedChange = { locationExpanded = !locationExpanded }
             ) {
-
                 OutlinedTextField(
                     value = location,
-                    onValueChange = {},
-                    readOnly = true,
+                    onValueChange = { location = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(),
                     label = { Text("Storage Location") },
-                    placeholder = { Text("Select location") },
+                    placeholder = { Text("Select or type location") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
@@ -294,9 +265,7 @@ fun ManagerAddStorageScreen(
                         )
                     },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = locationExpanded
-                        )
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = locationExpanded)
                     },
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
@@ -304,17 +273,11 @@ fun ManagerAddStorageScreen(
 
                 ExposedDropdownMenu(
                     expanded = locationExpanded,
-                    onDismissRequest = {
-                        locationExpanded = false
-                    }
+                    onDismissRequest = { locationExpanded = false }
                 ) {
-
                     locations.forEach { item ->
-
                         DropdownMenuItem(
-                            text = {
-                                Text(item)
-                            },
+                            text = { Text(item) },
                             onClick = {
                                 location = item
                                 locationExpanded = false
@@ -333,10 +296,7 @@ fun ManagerAddStorageScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // ---------------------------------------------------------
             // CONDITION
-            // ---------------------------------------------------------
-
             SectionTitle(
                 icon = Icons.Default.CheckCircle,
                 title = "Condition"
@@ -344,11 +304,8 @@ fun ManagerAddStorageScreen(
 
             ExposedDropdownMenuBox(
                 expanded = conditionExpanded,
-                onExpandedChange = {
-                    conditionExpanded = !conditionExpanded
-                }
+                onExpandedChange = { conditionExpanded = !conditionExpanded }
             ) {
-
                 OutlinedTextField(
                     value = condition,
                     onValueChange = {},
@@ -357,7 +314,6 @@ fun ManagerAddStorageScreen(
                         .fillMaxWidth()
                         .menuAnchor(),
                     label = { Text("Current Condition") },
-                    placeholder = { Text("Select condition") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
@@ -365,9 +321,7 @@ fun ManagerAddStorageScreen(
                         )
                     },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = conditionExpanded
-                        )
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = conditionExpanded)
                     },
                     colors = fieldColors,
                     shape = RoundedCornerShape(12.dp)
@@ -375,17 +329,11 @@ fun ManagerAddStorageScreen(
 
                 ExposedDropdownMenu(
                     expanded = conditionExpanded,
-                    onDismissRequest = {
-                        conditionExpanded = false
-                    }
+                    onDismissRequest = { conditionExpanded = false }
                 ) {
-
                     conditions.forEach { item ->
-
                         DropdownMenuItem(
-                            text = {
-                                Text(item)
-                            },
+                            text = { Text(item) },
                             onClick = {
                                 condition = item
                                 conditionExpanded = false
@@ -395,10 +343,7 @@ fun ManagerAddStorageScreen(
                 }
             }
 
-            // ---------------------------------------------------------
             // NOTES
-            // ---------------------------------------------------------
-
             SectionTitle(
                 icon = Icons.Default.Notes,
                 title = "Additional Information"
@@ -409,32 +354,51 @@ fun ManagerAddStorageScreen(
                 onValueChange = { notes = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(110.dp),
                 label = { Text("Notes") },
-                placeholder = {
-                    Text("Enter any additional information...")
-                },
+                placeholder = { Text("Enter any additional information...") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Notes,
                         contentDescription = null
                     )
                 },
-                maxLines = 5,
+                maxLines = 4,
                 colors = fieldColors,
                 shape = RoundedCornerShape(12.dp)
             )
 
+            errorMessage?.let { errorMsg ->
+                Text(
+                    text = errorMsg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
 
-            // ---------------------------------------------------------
             // SAVE BUTTON
-            // ---------------------------------------------------------
-
             Button(
                 onClick = {
-                    val qty = quantity.toDoubleOrNull() ?: 0.0
-                    if (cropName.isNotBlank() && qty > 0) {
+                    if (isSaving) return@Button
+
+                    val qty = quantity.replace(",", "").toDoubleOrNull() ?: 0.0
+
+                    var hasError = false
+                    if (cropName.isBlank()) {
+                        cropNameError = "Please enter crop or produce name"
+                        hasError = true
+                    }
+                    if (qty <= 0) {
+                        quantityError = "Please enter a valid quantity greater than 0"
+                        hasError = true
+                    }
+
+                    if (!hasError) {
+                        isSaving = true
+                        errorMessage = null
+
                         viewModel.addProduce(
                             cropName = cropName,
                             quantity = qty,
@@ -442,12 +406,18 @@ fun ManagerAddStorageScreen(
                             location = location.ifBlank { "Main Store" },
                             dateStored = dateStored,
                             condition = condition.ifBlank { "Good" },
-                            onSuccess = { onSaveSuccess() },
-                            onError = { /* handled */ }
+                            onSuccess = {
+                                isSaving = false
+                                onSaveSuccess()
+                            },
+                            onError = { err ->
+                                isSaving = false
+                                errorMessage = err
+                            }
                         )
                     }
                 },
-                enabled = cropName.isNotBlank() && (quantity.toDoubleOrNull() ?: 0.0) > 0,
+                enabled = !isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
@@ -456,19 +426,26 @@ fun ManagerAddStorageScreen(
                     containerColor = Color(0xFF1565C0)
                 )
             ) {
+                if (isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null
+                    )
 
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null
-                )
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "Save Produce",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                    Text(
+                        text = "Save Produce",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -478,15 +455,13 @@ fun ManagerAddStorageScreen(
 
 @Composable
 private fun SectionTitle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String
 ) {
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             imageVector = icon,
             contentDescription = null,

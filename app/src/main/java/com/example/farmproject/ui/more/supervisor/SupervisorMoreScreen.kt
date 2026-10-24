@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,6 +52,7 @@ private data class SupervisorMoreOption(
 fun SupervisorMoreScreen(
     onBackClick: () -> Unit = {},
     onAttendanceClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
@@ -62,8 +64,14 @@ fun SupervisorMoreScreen(
             onClick = onAttendanceClick
         ),
         SupervisorMoreOption(
+            title = "Supervisor Profile",
+            description = "View and manage your personal profile",
+            icon = Icons.Default.Person,
+            onClick = onProfileClick
+        ),
+        SupervisorMoreOption(
             title = "Settings",
-            description = "Manage supervisor profile, notifications, and preferences",
+            description = "Manage supervisor preferences and settings",
             icon = Icons.Default.Settings,
             onClick = onSettingsClick
         ),

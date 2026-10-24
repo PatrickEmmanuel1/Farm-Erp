@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PrecisionManufacturing
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -32,6 +34,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.farmproject.data.model.InventoryCategory
+import com.example.farmproject.data.repository.ChatRepository
 import com.example.farmproject.ui.activities.manager.FarmActivitiesUiState
 import com.example.farmproject.ui.activities.manager.FarmActivitiesViewModel
 import com.example.farmproject.ui.activities.manager.ManagerAddFarmActivityScreen
@@ -40,6 +43,8 @@ import com.example.farmproject.ui.activities.manager.ManagerFarmActivitiesScreen
 import com.example.farmproject.ui.activities.manager.ManagerFarmActivityDetailsScreen
 import com.example.farmproject.ui.activities.supervisor.SupervisorFarmActivitiesScreen
 import com.example.farmproject.ui.attendance.supervisor.SupervisorAttendanceScreen
+import com.example.farmproject.ui.chat.ChatRoutes
+import com.example.farmproject.ui.chat.chatGraph
 import com.example.farmproject.ui.dashboard.supervisor.SupervisorDashboardScreen
 import com.example.farmproject.ui.inventory.manager.InventoryUiState
 import com.example.farmproject.ui.inventory.manager.InventoryViewModel
@@ -73,22 +78,16 @@ private sealed class SupervisorTab(
         icon = Icons.Default.Dashboard
     )
 
-    data object Activities : SupervisorTab(
-        route = "supervisor_tab_activities",
-        title = "Activities",
-        icon = Icons.AutoMirrored.Filled.Assignment
+    data object Messages : SupervisorTab(
+        route = ChatRoutes.LIST,
+        title = "Messages",
+        icon = Icons.Default.Forum
     )
 
-    data object Inventory : SupervisorTab(
-        route = "supervisor_tab_inventory",
-        title = "Resources",
-        icon = Icons.Default.Inventory
-    )
-
-    data object Machinery : SupervisorTab(
-        route = "supervisor_tab_machinery",
-        title = "Machinery",
-        icon = Icons.Default.PrecisionManufacturing
+    data object Settings : SupervisorTab(
+        route = SupervisorRoutes.SETTINGS,
+        title = "Settings",
+        icon = Icons.Default.Settings
     )
 
     data object More : SupervisorTab(
@@ -102,6 +101,9 @@ private object SupervisorRoutes {
     const val SETTINGS = "supervisor_settings"
     const val PROFILE = "supervisor_profile"
     const val NOTIFICATIONS = "supervisor_notifications"
+    const val ACTIVITIES = "supervisor_tab_activities"
+    const val INVENTORY = "supervisor_tab_inventory"
+    const val MACHINERY = "supervisor_tab_machinery"
     const val ADD_FARM_ACTIVITY = "supervisor_add_farm_activity"
     const val EDIT_FARM_ACTIVITY = "supervisor_edit_farm_activity/{activityId}"
     const val FARM_ACTIVITY_DETAILS = "supervisor_farm_activity_details/{activityId}"
@@ -121,7 +123,11 @@ private inline fun <reified VM : ViewModel> sharedViewModel(
     backStackEntry: NavBackStackEntry
 ): VM {
     val parentEntry = remember(backStackEntry) {
-        navController.getBackStackEntry(route)
+        try {
+            navController.getBackStackEntry(route)
+        } catch (_: Exception) {
+            backStackEntry
+        }
     }
     return viewModel(parentEntry)
 }
@@ -131,12 +137,12 @@ fun SupervisorNavigation(
     onLogout: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val chatRepository = remember { ChatRepository() }
 
     val tabs = listOf(
         SupervisorTab.Dashboard,
-        SupervisorTab.Activities,
-        SupervisorTab.Inventory,
-        SupervisorTab.Machinery,
+        SupervisorTab.Messages,
+        SupervisorTab.Settings,
         SupervisorTab.More
     )
 
@@ -194,12 +200,16 @@ fun SupervisorNavigation(
             // 1. DASHBOARD
             composable(SupervisorTab.Dashboard.route) {
                 SupervisorDashboardScreen(
+                    onActivitiesClick = { navController.navigate(SupervisorRoutes.ACTIVITIES) },
+                    onInventoryClick = { navController.navigate(SupervisorRoutes.INVENTORY) },
+                    onMachineryClick = { navController.navigate(SupervisorRoutes.MACHINERY) },
+                    onAttendanceClick = { navController.navigate(SupervisorRoutes.ATTENDANCE) },
                     onLogoutClick = onLogout
                 )
             }
 
             // 2. ACTIVITIES
-            composable(SupervisorTab.Activities.route) {
+            composable(SupervisorRoutes.ACTIVITIES) {
                 val viewModel: FarmActivitiesViewModel = viewModel()
                 SupervisorFarmActivitiesScreen(
                     viewModel = viewModel,
@@ -213,7 +223,7 @@ fun SupervisorNavigation(
             composable(SupervisorRoutes.ADD_FARM_ACTIVITY) { backStackEntry ->
                 val viewModel: FarmActivitiesViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Activities.route,
+                    route = SupervisorRoutes.ACTIVITIES,
                     backStackEntry = backStackEntry
                 )
                 val formOptions by viewModel.formOptions.collectAsStateWithLifecycle()
@@ -252,7 +262,7 @@ fun SupervisorNavigation(
                 val activityId = backStackEntry.arguments?.getString("activityId").orEmpty()
                 val viewModel: FarmActivitiesViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Activities.route,
+                    route = SupervisorRoutes.ACTIVITIES,
                     backStackEntry = backStackEntry
                 )
 
@@ -305,7 +315,7 @@ fun SupervisorNavigation(
                 val activityId = backStackEntry.arguments?.getString("activityId").orEmpty()
                 val viewModel: FarmActivitiesViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Activities.route,
+                    route = SupervisorRoutes.ACTIVITIES,
                     backStackEntry = backStackEntry
                 )
 
@@ -355,7 +365,7 @@ fun SupervisorNavigation(
             }
 
             // 3. INVENTORY
-            composable(SupervisorTab.Inventory.route) {
+            composable(SupervisorRoutes.INVENTORY) {
                 val viewModel: InventoryViewModel = viewModel()
                 ManagerInventoryScreen(
                     viewModel = viewModel,
@@ -374,7 +384,7 @@ fun SupervisorNavigation(
                 val category = InventoryCategory.entries.find { it.name == categoryName } ?: InventoryCategory.FERTILIZER
                 val viewModel: InventoryViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Inventory.route,
+                    route = SupervisorRoutes.INVENTORY,
                     backStackEntry = backStackEntry
                 )
 
@@ -394,7 +404,7 @@ fun SupervisorNavigation(
                 val categoryName = backStackEntry.arguments?.getString("categoryName") ?: "Fertilizer"
                 val viewModel: InventoryViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Inventory.route,
+                    route = SupervisorRoutes.INVENTORY,
                     backStackEntry = backStackEntry
                 )
 
@@ -415,7 +425,7 @@ fun SupervisorNavigation(
                 val itemId = backStackEntry.arguments?.getString("itemId").orEmpty()
                 val viewModel: InventoryViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Inventory.route,
+                    route = SupervisorRoutes.INVENTORY,
                     backStackEntry = backStackEntry
                 )
 
@@ -439,7 +449,7 @@ fun SupervisorNavigation(
             }
 
             // 4. MACHINERY
-            composable(SupervisorTab.Machinery.route) {
+            composable(SupervisorRoutes.MACHINERY) {
                 val viewModel: MachineryViewModel = viewModel()
                 ManagerMachineryScreen(
                     viewModel = viewModel,
@@ -456,7 +466,7 @@ fun SupervisorNavigation(
                 val machineryId = backStackEntry.arguments?.getString("machineryId").orEmpty()
                 val viewModel: MachineryViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Machinery.route,
+                    route = SupervisorRoutes.MACHINERY,
                     backStackEntry = backStackEntry
                 )
 
@@ -501,7 +511,7 @@ fun SupervisorNavigation(
             composable(SupervisorRoutes.ADD_MACHINERY) { backStackEntry ->
                 val viewModel: MachineryViewModel = sharedViewModel(
                     navController = navController,
-                    route = SupervisorTab.Machinery.route,
+                    route = SupervisorRoutes.MACHINERY,
                     backStackEntry = backStackEntry
                 )
 
@@ -531,6 +541,7 @@ fun SupervisorNavigation(
                 SupervisorMoreScreen(
                     onBackClick = { navigateToTab(SupervisorTab.Dashboard.route) },
                     onAttendanceClick = { navController.navigate(SupervisorRoutes.ATTENDANCE) },
+                    onProfileClick = { navController.navigate(SupervisorRoutes.PROFILE) },
                     onSettingsClick = { navController.navigate(SupervisorRoutes.SETTINGS) },
                     onLogoutClick = onLogout
                 )
@@ -566,6 +577,8 @@ fun SupervisorNavigation(
                     onBackClick = { navController.popBackStack() }
                 )
             }
+
+            chatGraph(navController, chatRepository)
         }
     }
 }

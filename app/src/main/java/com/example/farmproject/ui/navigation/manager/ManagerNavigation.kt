@@ -33,6 +33,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.farmproject.data.model.InventoryCategory
+import com.example.farmproject.data.repository.ChatRepository
 import com.example.farmproject.ui.activities.manager.FarmActivitiesUiState
 import com.example.farmproject.ui.activities.manager.FarmActivitiesViewModel
 import com.example.farmproject.ui.activities.manager.ManagerAddFarmActivityScreen
@@ -83,6 +84,8 @@ import com.example.farmproject.ui.settings.manager.ManagerFarmDetailsScreen
 import com.example.farmproject.ui.settings.manager.ManagerProfileScreen
 import com.example.farmproject.ui.settings.manager.ManagerSettingsScreen
 import com.example.farmproject.ui.attendance.manager.ManagerAttendanceScreen
+import com.example.farmproject.ui.chat.ChatRoutes
+import com.example.farmproject.ui.chat.chatGraph
 import com.example.farmproject.ui.storage.manager.ManagerAddStorageScreen
 import com.example.farmproject.ui.storage.manager.ManagerStorageDetailsScreen
 import com.example.farmproject.ui.storage.manager.ManagerStorageScreen
@@ -212,6 +215,7 @@ fun ManagerNavigation(
 ) {
 
     val navController = rememberNavController()
+    val chatRepository = remember { ChatRepository() }
 
     val tabs = listOf(
         ManagerTab.Dashboard,
@@ -1058,6 +1062,11 @@ fun ManagerNavigation(
                         onBackClick = {
                             navigateToTab(ManagerTab.Dashboard.route)
                         },
+                        onChatClick = {
+                            navController.navigate(
+                                ChatRoutes.LIST
+                            )
+                        },
                         onAttendanceClick = {
                             navController.navigate(
                                 ManagerRoutes.ATTENDANCE
@@ -1266,6 +1275,8 @@ fun ManagerNavigation(
                         }
                     )
                 }
+
+                chatGraph(navController, chatRepository)
             }
         }
     }

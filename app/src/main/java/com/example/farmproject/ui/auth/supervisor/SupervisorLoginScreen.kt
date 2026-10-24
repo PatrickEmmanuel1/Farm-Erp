@@ -70,7 +70,7 @@ fun SupervisorLoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Farm ERP",
+                text = "MyFarm",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

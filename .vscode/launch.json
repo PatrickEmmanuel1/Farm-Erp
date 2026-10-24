@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Android (local Supabase config)",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/flutter_app/lib/main.dart",
+      "cwd": "${workspaceFolder}/flutter_app"
+    }
+  ]
+}

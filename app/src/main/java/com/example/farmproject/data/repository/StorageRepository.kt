@@ -18,7 +18,6 @@ class StorageRepository(
                         if (farmId.isNotBlank()) {
                             eq("farm_id", farmId)
                         }
-                        eq("is_deleted", false)
                     }
                     order("date_stored", Order.DESCENDING)
                 }
@@ -48,12 +47,8 @@ class StorageRepository(
 
     suspend fun createFacility(facility: StorageFacility): Result<StorageFacility> {
         return try {
-            val created = client.from("storage_facility")
-                .insert(facility) {
-                    select()
-                }
-                .decodeSingle<StorageFacility>()
-            Result.success(created)
+            client.from("storage_facility").insert(facility)
+            Result.success(facility)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -61,12 +56,8 @@ class StorageRepository(
 
     suspend fun addStoredProduce(produce: StoredProduce): Result<StoredProduce> {
         return try {
-            val created = client.from("stored_produce")
-                .insert(produce) {
-                    select()
-                }
-                .decodeSingle<StoredProduce>()
-            Result.success(created)
+            client.from("stored_produce").insert(produce)
+            Result.success(produce)
         } catch (e: Exception) {
             Result.failure(e)
         }

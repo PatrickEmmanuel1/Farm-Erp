@@ -13,6 +13,5 @@ data class StoredProduce(
     val location: String,
     @SerialName("date_stored") val dateStored: String,
     val condition: String,
-    @SerialName("needs_attention") val needsAttention: Boolean = false,
-    @SerialName("is_deleted") val isDeleted: Boolean = false
+    @SerialName("needs_attention") val needsAttention: Boolean = false
 )

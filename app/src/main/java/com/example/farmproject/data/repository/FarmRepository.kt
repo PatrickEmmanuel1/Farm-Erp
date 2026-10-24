@@ -10,6 +10,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.util.UUID
@@ -89,7 +90,34 @@ class FarmRepository(
      */
     suspend fun ensureFarmInSession() {
         if (CurrentSession.farmId.isNotBlank()) return
-        if (!CurrentSession.userRole.equals("Manager", ignoreCase = true)) return
+        val currentUserId = signedInUserId() ?: return
+
+        if (CurrentSession.userRole.equals("Supervisor", ignoreCase = true)) {
+            try {
+                val row = client.from("supervisor_profile")
+                    .select { filter { eq("account_id", currentUserId) } }
+                    .decodeList<JsonObject>()
+                    .firstOrNull()
+                val fId = row?.get("farm_id")?.jsonPrimitive?.contentOrNull
+                if (!fId.isNullOrBlank()) {
+                    CurrentSession.farmId = fId
+                    return
+                }
+            } catch (_: Exception) {}
+        } else if (CurrentSession.userRole.equals("Worker", ignoreCase = true)) {
+            try {
+                val row = client.from("worker_profile")
+                    .select { filter { eq("account_id", currentUserId) } }
+                    .decodeList<JsonObject>()
+                    .firstOrNull()
+                val fId = row?.get("farm_id")?.jsonPrimitive?.contentOrNull
+                if (!fId.isNullOrBlank()) {
+                    CurrentSession.farmId = fId
+                    return
+                }
+            } catch (_: Exception) {}
+        }
+
         getFarmForUser()?.farmId?.let { CurrentSession.farmId = it }
     }
 

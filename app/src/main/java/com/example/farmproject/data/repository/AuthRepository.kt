@@ -271,17 +271,22 @@ class AuthRepository(
 
             val currentAccountId = dbAccount?.accountId ?: authUser?.id.orEmpty()
 
-            val isSupervisorProfile = if (currentAccountId.isNotBlank()) {
+            val supervisorFarmId = if (currentAccountId.isNotBlank()) {
                 try {
-                    client.from("supervisor_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>().isNotEmpty()
-                } catch (_: Exception) { false }
-            } else false
+                    val rows = client.from("supervisor_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>()
+                    rows.firstOrNull()?.get("farm_id")?.jsonPrimitive?.contentOrNull
+                } catch (_: Exception) { null }
+            } else null
 
-            val isWorkerProfile = if (currentAccountId.isNotBlank() && !isSupervisorProfile) {
+            val workerFarmId = if (currentAccountId.isNotBlank() && supervisorFarmId == null) {
                 try {
-                    client.from("worker_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>().isNotEmpty()
-                } catch (_: Exception) { false }
-            } else false
+                    val rows = client.from("worker_profile").select { filter { eq("account_id", currentAccountId) } }.decodeList<JsonObject>()
+                    rows.firstOrNull()?.get("farm_id")?.jsonPrimitive?.contentOrNull
+                } catch (_: Exception) { null }
+            } else null
+
+            val isSupervisorProfile = supervisorFarmId != null
+            val isWorkerProfile = workerFarmId != null
 
             val detectedRole = when {
                 isSupervisorProfile -> "Supervisor"
@@ -318,13 +323,15 @@ class AuthRepository(
             }
 
             val farm = FarmRepository(client).getFarmForUser(account.accountId)
+            val resolvedFarmId = supervisorFarmId ?: workerFarmId ?: farm?.farmId ?: ""
+
             CurrentSession.updateSession(
                 userId = account.accountId,
                 fullName = account.fullName.ifBlank { fallbackName },
                 email = account.email,
                 phoneNumber = account.phoneNumber,
                 userRole = userRole,
-                farmId = farm?.farmId ?: ""
+                farmId = resolvedFarmId
             )
             Result.success(account.copy(role = userRole))
         } catch (e: Exception) {
@@ -486,21 +493,47 @@ class AuthRepository(
             val defaultName = userEmail.substringBefore("@").replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             val resolvedName = account.fullName.ifBlank { fullNameFromMeta ?: defaultName }
             val resolvedPhone = account.phoneNumber ?: phoneFromMeta
-            val resolvedRole = account.role ?: roleFromMeta ?: "Manager"
+            val currentAccId = account.accountId.ifBlank { user.id }
+
+            val supervisorFarmId = try {
+                val rows = client.from("supervisor_profile").select { filter { eq("account_id", currentAccId) } }.decodeList<JsonObject>()
+                rows.firstOrNull()?.get("farm_id")?.jsonPrimitive?.contentOrNull
+            } catch (_: Exception) { null }
+
+            val workerFarmId = if (supervisorFarmId == null) {
+                try {
+                    val rows = client.from("worker_profile").select { filter { eq("account_id", currentAccId) } }.decodeList<JsonObject>()
+                    rows.firstOrNull()?.get("farm_id")?.jsonPrimitive?.contentOrNull
+                } catch (_: Exception) { null }
+            } else null
+
+            val isSupervisorProfile = supervisorFarmId != null || account.role.equals("Supervisor", ignoreCase = true) || roleFromMeta.equals("Supervisor", ignoreCase = true)
+            val isWorkerProfile = workerFarmId != null || account.role.equals("Worker", ignoreCase = true) || roleFromMeta.equals("Worker", ignoreCase = true)
+
+            val detectedRole = when {
+                isSupervisorProfile -> "Supervisor"
+                isWorkerProfile -> "Worker"
+                !account.role.isNullOrBlank() -> account.role
+                !roleFromMeta.isNullOrBlank() -> roleFromMeta
+                else -> "Manager"
+            }
+
+            val resolvedRole = detectedRole
 
             if (resolvedRole.equals("Manager", ignoreCase = true)) {
                 ensureManagerAccount(user.id, resolvedName, userEmail, resolvedPhone)
             }
 
-            val farm = FarmRepository(client).getFarmForUser(account.accountId.ifBlank { user.id })
+            val farm = FarmRepository(client).getFarmForUser(currentAccId)
+            val resolvedFarmId = supervisorFarmId ?: workerFarmId ?: farm?.farmId ?: ""
 
             CurrentSession.updateSession(
-                userId = account.accountId.ifBlank { user.id },
+                userId = currentAccId,
                 fullName = resolvedName,
                 email = userEmail,
                 phoneNumber = resolvedPhone,
                 userRole = resolvedRole,
-                farmId = farm?.farmId ?: ""
+                farmId = resolvedFarmId
             )
 
             true

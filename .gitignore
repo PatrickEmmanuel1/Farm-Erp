@@ -14,3 +14,7 @@
 .cxx
 local.properties
 .env
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+/flutter_app/build/

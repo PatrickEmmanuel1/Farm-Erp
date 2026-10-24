@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -52,6 +53,7 @@ private data class MoreMenuItem(
 @Composable
 fun ManagerMoreScreen(
     onBackClick: () -> Unit = {},
+    onChatClick: () -> Unit = {},
     onInventoryClick: () -> Unit = {},
     onMachineryClick: () -> Unit = {},
     onStorageClick: () -> Unit = {},
@@ -66,6 +68,11 @@ fun ManagerMoreScreen(
 ) {
 
     val menuItems = listOf(
+        MoreMenuItem(
+            title = "Messages & Team Chat",
+            description = "Chat with farm staff, supervisors and workers",
+            icon = Icons.Default.Forum
+        ),
         MoreMenuItem(
             title = "Worker Attendance",
             description = "Daily field clock-in, status & attendance logs",
@@ -109,6 +116,7 @@ fun ManagerMoreScreen(
     )
 
     val menuActions: Map<String, () -> Unit> = mapOf(
+        "Messages & Team Chat" to onChatClick,
         "Worker Attendance" to onAttendanceClick,
         "Resources" to onInventoryClick,
         "Machinery" to onMachineryClick,

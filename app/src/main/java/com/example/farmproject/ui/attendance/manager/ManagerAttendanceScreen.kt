@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,9 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Person
@@ -85,7 +82,7 @@ fun ManagerAttendanceScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Daily attendance for supervisors and workers",
+                            text = "Daily attendance output for supervisors and workers",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -227,21 +224,7 @@ fun ManagerAttendanceScreen(
                         } else {
                             items(filteredItems) { display ->
                                 WorkerAttendanceCard(
-                                    display = display,
-                                    onMarkStatus = { status ->
-                                        viewModel.markAttendance(
-                                            workerProfileId = display.workerProfileId,
-                                            status = status
-                                        )
-                                    },
-                                    onClockIn = {
-                                        viewModel.clockInWorker(display.workerProfileId)
-                                    },
-                                    onClockOut = {
-                                        display.record?.attendanceId?.let { id ->
-                                            viewModel.clockOutWorker(id)
-                                        }
-                                    }
+                                    display = display
                                 )
                             }
                         }
@@ -387,10 +370,7 @@ private fun SummaryBadgeCard(
 
 @Composable
 private fun WorkerAttendanceCard(
-    display: AttendanceDisplay,
-    onMarkStatus: (String) -> Unit,
-    onClockIn: () -> Unit,
-    onClockOut: () -> Unit
+    display: AttendanceDisplay
 ) {
     val currentStatus = display.currentStatus
 
@@ -468,84 +448,28 @@ private fun WorkerAttendanceCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Quick Mark Status Chips
-            Text(
-                text = "Mark Status:",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                FilterChip(
-                    selected = currentStatus.equals("Present", ignoreCase = true),
-                    onClick = { onMarkStatus("present") },
-                    label = { Text("Present", fontSize = 11.sp) }
-                )
-                FilterChip(
-                    selected = currentStatus.equals("Late", ignoreCase = true),
-                    onClick = { onMarkStatus("late") },
-                    label = { Text("Late", fontSize = 11.sp) }
-                )
-                FilterChip(
-                    selected = currentStatus.equals("Absent", ignoreCase = true),
-                    onClick = { onMarkStatus("absent") },
-                    label = { Text("Absent", fontSize = 11.sp) }
-                )
-                FilterChip(
-                    selected = currentStatus.equals("On Leave", ignoreCase = true),
-                    onClick = { onMarkStatus("on_leave") },
-                    label = { Text("Leave", fontSize = 11.sp) }
-                )
-            }
-
-            // Clock-In / Clock-Out Info
+            // Clock-In / Clock-Out Info Row
             val checkInTime = display.record?.checkIn?.take(16)?.replace("T", " ") ?: "--:--"
             val checkOutTime = display.record?.checkOut?.take(16)?.replace("T", " ") ?: "--:--"
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "In: $checkInTime  |  Out: $checkOutTime",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (display.record?.checkIn == null) {
-                    Button(
-                        onClick = onClockIn,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Text("Clock In", fontSize = 12.sp)
-                    }
-                } else if (display.record.checkOut == null) {
-                    Button(
-                        onClick = onClockOut,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Text("Clock Out", fontSize = 12.sp)
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Check In: $checkInTime  |  Check Out: $checkOutTime",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

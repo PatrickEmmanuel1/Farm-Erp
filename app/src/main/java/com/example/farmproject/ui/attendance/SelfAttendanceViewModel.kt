@@ -41,7 +41,7 @@ class SelfAttendanceViewModel(
                 val farmId = CurrentSession.farmId
                 val todayStr = LocalDate.now().toString()
                 val history = repository.getMyAttendanceHistory(farmId)
-                val todayRecord = history.find { it.workDate == todayStr }
+                val todayRecord = repository.getMyAttendanceToday() ?: history.find { it.workDate == todayStr }
 
                 _uiState.value = SelfAttendanceUiState.Success(
                     todayRecord = todayRecord,
@@ -69,14 +69,43 @@ class SelfAttendanceViewModel(
         }
     }
 
-    fun clockOutSelf(attendanceId: String) {
+    fun clockOutSelf(attendanceId: String? = null, workerProfileId: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
-            val result = repository.clockOut(attendanceId)
+            val result = repository.clockOut(
+                attendanceId = attendanceId,
+                workerProfileId = workerProfileId
+            )
             if (result.isSuccess) {
                 loadMyAttendance()
             } else {
                 _uiState.value = SelfAttendanceUiState.Error(
                     result.exceptionOrNull()?.message ?: "Failed to clock out"
+                )
+            }
+        }
+    }
+
+    fun markAway(status: String, notes: String? = null) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = repository.markAway(status, notes)
+            if (result.isSuccess) {
+                loadMyAttendance()
+            } else {
+                _uiState.value = SelfAttendanceUiState.Error(
+                    result.exceptionOrNull()?.message ?: "Failed to mark status"
+                )
+            }
+        }
+    }
+
+    fun undoAway() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = repository.undoAway()
+            if (result.isSuccess) {
+                loadMyAttendance()
+            } else {
+                _uiState.value = SelfAttendanceUiState.Error(
+                    result.exceptionOrNull()?.message ?: "Failed to reset status"
                 )
             }
         }
